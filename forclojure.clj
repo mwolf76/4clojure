@@ -1186,6 +1186,25 @@
         (map (partial __ my-even?) (range 6)))
       [true false true false true false])))
 
+;; 80. Perfect Numbers
+
+;; A number is "perfect" if the sum of its divisors equal the number
+;; itself. 6 is a perfect number because 1+2+3=6. Write a function
+;; which returns true for perfect numbers and false otherwise.
+
+(let [__
+      (fn[n]
+        (let [factors
+              (fn[n]
+                (for [i (range 1 n) :when (zero? (mod n i))] i))]
+          (= n (reduce + (factors n)))))]
+  (and
+   (= (__ 6) true)
+   (= (__ 7) false)
+   (= (__ 496) true)
+   (= (__ 500) false)
+   (= (__ 8128) true)))
+
 ;; 81. Set Intersection
 
 ;; Write a function which returns the intersection of two sets. The
@@ -1264,9 +1283,6 @@
    (= true (__ ["hat" "coat" "dog" "cat" "oat" "cot" "hot" "hog"]))))
 
 
-
-
-
 ;; 83. A Half Truth
 
 ;; Write a function which takes a variable number of booleans. Your
@@ -1288,6 +1304,82 @@
    (= false (__ true true true))
    (= true (__ true true true false))))
 
+;; 85. Power Set
+
+;; Write a function which generates the power set of a given set. The
+;; power set of a set x is the set of all subsets of x, including the
+;; empty set and x itself.
+
+(let [__
+      (fn [x]
+        (let [x' (vec x)
+              two-n #(reduce * (repeat % 2))
+              n (count x')
+              p (two-n n)
+
+              make-set
+              (fn [x bw]
+                (let []
+                  (loop [bit 0
+                         res #{}]
+                    (if (= bit n)
+                      res
+                      (if (zero? (bit-and (two-n bit) bw))
+                        (recur (inc bit) res)
+                        (recur (inc bit) (conj res (nth x' bit))))))))]
+
+          (set (for [bw (range (two-n n))]
+                 (make-set x bw)))))]
+  (and
+   (= (__ #{1 :a}) #{#{1 :a} #{:a} #{} #{1}})
+   (= (__ #{}) #{#{}})
+   (= (__ #{1 2 3})
+      #{#{} #{1} #{2} #{3} #{1 2} #{1 3} #{2 3} #{1 2 3}})
+   (= (count (__ (into #{} (range 10)))) 1024)
+))
+
+;; 88. Symmetric Difference
+
+;; Write a function which returns the symmetric difference of two
+;; sets. The symmetric difference is the set of items belonging to one
+;; but not both of the two sets.
+
+(let [__
+      (fn [a b]
+        (clojure.set/union (clojure.set/difference a b)
+                           (clojure.set/difference b a)))]
+  (and
+   (= (__ #{1 2 3 4 5 6} #{1 3 5 7}) #{2 4 6 7})
+   (= (__ #{:a :b :c} #{}) #{:a :b :c})
+   (= (__ #{} #{4 5 6}) #{4 5 6})
+   (= (__ #{[1 2] [2 3]} #{[2 3] [3 4]}) #{[1 2] [3 4]})))
+
+;; 90. Cartesian Product
+
+;; Write a function which calculates the Cartesian product of two
+;; sets.
+
+
+(let [__
+      (fn [a b]
+        (into #{} (for [xa a xb b] [xa xb])))]
+
+  (and
+   (= (__ #{"ace" "king" "queen"} #{"♠" "♥" "♦" "♣"})
+   #{["ace"   "♠"] ["ace"   "♥"] ["ace"   "♦"] ["ace"   "♣"]
+     ["king"  "♠"] ["king"  "♥"] ["king"  "♦"] ["king"  "♣"]
+     ["queen" "♠"] ["queen" "♥"] ["queen" "♦"] ["queen" "♣"]})
+
+   (= (__ #{1 2 3} #{4 5})
+   #{[1 4] [2 4] [3 4] [1 5] [2 5] [3 5]})
+
+   (= 300 (count (__ (into #{} (range 10))
+                  (into #{} (range 30)))))))
+
+
+(let [[eye & more] #{:ace :king :queen :jack}]
+  (prn eye)
+  (prn more))
 
 
 ;; 92. Read Roman numerals
@@ -1339,6 +1431,55 @@
    (= 3999 (__ "MMMCMXCIX"))
    (= 48 (__ "XLVIII"))))
 
+;; 95. To Tree, or not to Tree
+
+;; Write a predicate which checks whether or not a given sequence
+;; represents a binary tree. Each node in the tree must have a value,
+;; a left child, and a right child.
+
+(let [__
+      (fn rec[t]
+
+        (cond
+         (nil? t)
+         true
+
+         (and (or (vector? t)
+                  (seq? t))
+              (= 3 (count t)))
+
+         (let [[root lhs rhs] t]
+           (and
+            (rec lhs)
+            (rec rhs)))
+
+         :else
+         false))]
+
+  (and
+   (= (__ '(:a (:b nil nil) nil))
+      true)
+
+   (= (__ '(:a (:b nil nil)))
+      false)
+
+   (= (__ [1 nil [2 [3 nil nil] [4 nil nil]]])
+      true)
+
+   (= (__ [1 [2 nil nil] [3 nil nil] [4 nil nil]])
+      false)
+
+   (= (__ [1 [2 [3 [4 nil nil] nil] nil] nil])
+      true)
+
+   (= (__ [1 [2 [3 [4 false nil] nil] nil] nil])
+      false)
+
+   (= (__ '(:a nil ()))
+      false)))
+
+
+
 ;; 99. Product Digits
 
 ;; Write a function which multiplies two numbers and returns the
@@ -1352,6 +1493,43 @@
    (= (__ 1 1) [1])
    (= (__ 99 9) [8 9 1])
    (= (__ 999 99) [9 8 9 0 1])))
+
+;; 100. Least Common Multiple
+
+;; Write a function which calculates the least common multiple. Your
+;; function should accept a variable number of positive integers or
+;; ratios.
+
+(let [__
+      (fn rec[& args]
+        (let [gcd
+              (fn[a b]
+                (cond
+                 (< a b)
+                 (recur a (- b a))
+
+                 (< b a)
+                 (recur (- a b) b)
+
+                 :else
+                 a))]
+          (let [n (count args)]
+            (prn args)
+            (cond
+             (= 1 n)
+             (first args)
+
+             :else
+             (let [a (first args)
+                   b (rec (rest args))]
+               (/ (* a b) (gcd a b)))))))]
+
+  (__ 5 3 7))
+
+  (and
+   ;; (== (__ 2 3) 6)
+   (== (__ 5 3 7) 105)))
+
 
 
 ;; 101. Levenshtein distance
@@ -1405,6 +1583,23 @@
    (= (__ "ttttattttctg" "tcaaccctaccat") 10)
    (= (__ "gaattctaatctc" "caaacaaaaaattt") 9)))
 
+;; 102. intoCamelCase
+
+;; When working with java, you often need to create an object with
+;; fieldsLikeThis, but you'd rather work with a hashmap that
+;; has :keys-like-this until it's time to convert. Write a function
+;; which takes lower-case hyphen-separated strings and converts them
+;; to camel-case strings.
+
+(let [__
+      (fn[s]
+        (let [[ft & rt] (clojure.string/split s #"\-")]
+          (str ft (apply str (map clojure.string/capitalize rt)))))]
+  (and
+   (= (__ "something") "something")
+   (= (__ "multi-word-key") "multiWordKey")
+   (= (__ "leaveMeAlone") "leaveMeAlone")))
+
 ;; 107. Simple closures
 
 ;; Lexical scope and first-class functions are two of the most basic
@@ -1430,6 +1625,98 @@
    (= [1 8 27 64] (map (__ 3) [1 2 3 4]))
    (= [1 2 4 8 16] (map #((__ %) 2) [0 1 2 3 4]))))
 
+;; 115. The Balance of N
+
+;; A balanced number is one whose component digits have the same sum
+;; on the left and right halves of the number. Write a function which
+;; accepts an integer n, and returns true iff n is balanced.
+
+(let [__
+      (fn[n]
+        (let [chr->int #(- (int %) (int \0))]
+          (loop [s (str n)
+                 lhs 0
+                 rhs 0]
+
+            (cond
+             (<= (count s) 1)
+             (= lhs rhs)
+
+             :else
+             (let [l (chr->int (first s))
+                   r (chr->int (last s))
+                   s' (rest (butlast s))]
+               (recur s' (+ lhs l) (+ rhs r)))))))]
+
+  (and
+   (= true (__ 11))
+   (= true (__ 121))
+   (= false (__ 123))
+   (= true (__ 0))
+   (= false (__ 88099))
+   (= true (__ 89098))
+   (= true (__ 89089))
+   (= (take 20 (filter __ (range)))
+   [0 1 2 3 4 5 6 7 8 9 11 22 33 44 55 66 77 88 99 101])))
+
+
+
+;; 118. Reimplement Map
+
+;; Map is one of the core elements of a functional programming
+;; language. Given a function f and an input sequence s, return a lazy
+;; sequence of (f x) for each element x in s. Special restrictions:
+;; map map-indexed mapcat for
+
+(let [__
+      (fn rec [f coll]
+        (lazy-seq
+         (when-let [s (seq coll)]
+           (cons (f (first s))
+                 (rec f (rest s))))))]
+
+  (and
+   (= [3 4 5 6 7]
+      (__ inc [2 3 4 5 6]))
+
+   (= (repeat 10 nil)
+      (__ (fn [_] nil) (range 10)))
+
+   (= [1000000 1000001]
+      (->> (__ inc (range))
+           (drop (dec 1000000))
+           (take 2)))))
+
+
+;; 122. Read a binary number
+
+;; Convert a binary number, provided in the form of a string, to its
+;; numerical value.
+
+(let [__
+      (fn [s]
+        (loop [[f & r] (reverse s)
+               res 0
+               mul 1]
+          (if (nil? f)
+            res
+            (recur r (+ res (* mul (- (int f) 48))) (* 2 mul)))))]
+  (and
+   (= 0     (__ "0"))
+   (= 7     (__ "111"))
+   (= 8     (__ "1000"))
+   (= 9     (__ "1001"))
+   (= 255   (__ "11111111"))
+   (= 1365  (__ "10101010101"))
+   (= 65535 (__ "1111111111111111"))))
+
+;; 126. Through the Looking Glass
+
+;; Enter a value which satisfies the following
+
+(let [x java.lang.Class]
+  (and (= (class x) x) x))
+
 
 ;; 134. A nil key
 
@@ -1443,6 +1730,20 @@
    (true?  (__ :a {:a nil :b 2}))
    (false? (__ :b {:a nil :b 2}))
    (false? (__ :c {:a nil :b 2}))))
+
+;; 135. Infix Calculator
+
+;; Your friend Joe is always whining about Lisps using the prefix
+;; notation for math. Show him how you could easily write a function
+;; that does math using the infix notation. Is your favorite language
+;; that flexible, Joe? Write a function that accepts a variable length
+;; mathematical expression consisting of numbers and the operations +,
+;; -, *, and /. Assume a simple calculator that does not do precedence
+;; and instead just calculates left to right.
+
+(let [__
+      (fn[expr]
+
 
 ;; 143. Dot product
 
@@ -1490,6 +1791,74 @@
    (= __ (for [[x y] (partition 2 (range 20))]
            (+ x y)))))
 
+;; 153. Pairwise Disjoint Sets
+
+;; Given a set of sets, create a function which returns true if no two
+;; of those sets have any elements in common and false
+;; otherwise. Some of the test cases are a bit tricky, so pay a little
+;; more attention to them.
+
+;; Such sets are usually called pairwise disjoint or mutually
+;; disjoint.
+
+(let [__
+      (fn[xs]
+        (every? identity
+                (for [a xs b xs
+                      :when (not (= a b))]
+                  (empty? (clojure.set/intersection a b)))))]
+  (and
+   (= (__ #{#{\U} #{\s} #{\e \R \E} #{\P \L} #{\.}})
+      true)
+
+   (= (__ #{#{:a :b :c :d :e}
+            #{:a :b :c :d}
+            #{:a :b :c}
+            #{:a :b}
+            #{:a}})
+      false)
+
+
+   (= (__ #{#{[1 2 3] [4 5]}
+            #{[1 2] [3 4 5]}
+            #{[1] [2] 3 4 5}
+            #{1 2 [3 4] [5]}})
+      true)
+
+   (= (__ #{#{'a 'b}
+            #{'c 'd 'e}
+            #{'f 'g 'h 'i}
+            #{''a ''c ''f}})
+      true)
+
+   (= (__ #{#{'(:x :y :z) '(:x :y) '(:z) '()}
+            #{#{:x :y :z} #{:x :y} #{:z} #{}}
+            #{'[:x :y :z] [:x :y] [:z] [] {}}})
+      false)
+
+   (= (__ #{#{(= "true") false}
+            #{:yes :no}
+            #{(class 1) 0}
+            #{(symbol "true") 'false}
+            #{(keyword "yes") ::no}
+            #{(class '1) (int \0)}})
+      false)
+
+   (= (__ #{#{distinct?}
+            #{#(-> %) #(-> %)}
+            #{#(-> %) #(-> %) #(-> %)}
+            #{#(-> %) #(-> %) #(-> %)}})
+      true)
+
+   (= (__ #{#{(#(-> *)) + (quote mapcat) #_ nil}
+            #{'+ '* mapcat (comment mapcat)}
+            #{(do) set contains? nil?}
+            #{, , , #_, , empty?}})
+      false)))
+
+
+
+
 ;; 156. Map Defaults
 
 ;; When retrieving values from a map, you can specify default values
@@ -1515,7 +1884,19 @@
    (= (__ [:a :b] [:foo :bar]) {:foo [:a :b] :bar [:a :b]})))
 
 
+;; 157. Indexing Sequences
 
+;; Transform a sequence into a sequence of pairs containing the
+;; original elements along with their index.
+
+(let [__
+      (fn[sq]
+        (map-indexed #(-> [%2 %1]) sq))]
+
+  (and
+   (= (__ [:a :b :c]) [[:a 0] [:b 1] [:c 2]])
+   (= (__ [0 1 3]) '((0 0) (1 1) (3 2)))
+   (= (__ [[:foo] {:bar :baz}]) [[[:foo] 0] [{:bar :baz} 1]])))
 
 ;; 161. Subset and Superset
 

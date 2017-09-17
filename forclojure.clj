@@ -619,6 +619,20 @@
 ;; maintained, but the sub-sequences themselves can be returned in any
 ;; order (this is why 'set' is used in the test cases).
 
+(let [__
+      (fn[coll]
+        (loop [[head & tail] coll res {}]
+          (if (nil? head)
+            (into #{} (vals res))
+            (let [t (type head)]
+              (recur tail
+                     (assoc res t (conj (get res t []) head)))))))]
+
+  (and
+   (= (set (__ [1 :a 2 :b 3 :c])) #{[1 2 3] [:a :b :c]})
+   (= (set (__ [:a "foo"  "bar" :b])) #{[:a :b] ["foo" "bar"]})
+   (= (set (__ [[1 2] :a [3 4] 5 6 :b])) #{[[1 2] [3 4]] [:a :b] [5 6]})))
+
 ;; 51. Advanced Destructuring
 
 ;; Here is an example of some more sophisticated destructuring.
@@ -748,24 +762,21 @@
 ;; functions, and create a function that applies them from
 ;; right-to-left. Special restrictions: comp
 
-(let [__
-      (fn
-        ([f g]
-         (fn
-           ([] (f (g)))
-           ([x] (f (g x)))
-           ([x y] (f (g x y)))
-           ([x y z] (f (g x y z)))
-           ([x y z & args] (f (apply g x y z args))))))]
-  (and
-   (= [3 2 1] ((__ rest reverse) [1 2 3 4]))
-   (= 5 ((__ (partial + 3) second) [1 2 3 4]))
-   (= true ((__ zero? #(mod % 8) +) 3 5 7 9))))
-;; ((__ #(.toUpperCase %) #(apply str %) take) 5 "hello world")))
+;; (let [__
+;;       (fn
+;;         ([f g]
+;;          (fn
+;;            ([] (f (g)))
+;;            ([x] (f (g x)))
+;;            ([x y] (f (g x y)))
+;;            ([x y z] (f (g x y z)))
+;;            ([x y z & args] (f (apply g x y z args))))))]
+;;   (and
+;;    (= [3 2 1] ((__ rest reverse) [1 2 3 4]))
+;;    (= 5 ((__ (partial + 3) second) [1 2 3 4]))
+;;    (= true ((__ zero? #(mod % 8) +) 3 5 7 9))
+;;   ((__ #(.toUpperCase %) #(apply str %) take) 5 "hello world")))
 
-
-
-(= "HELLO" ((__ #(.toUpperCase %) #(apply str %) take) 5 "hello world"))))
 
 
 ;; 61. Map Construction
@@ -1338,6 +1349,39 @@
    (= (count (__ (into #{} (range 10)))) 1024)
 ))
 
+;; 86. Happy Numbers
+
+;; Happy numbers are positive integers that follow a particular
+;; formula: take each individual digit, square it, and then sum the
+;; squares to get a new number. Repeat with the new number and
+;; eventually, you might get to a number whose squared sum is 1. This
+;; is a happy number. An unhappy number (or sad number) is one that
+;; loops endlessly. Write a function that determines if a number is
+;; happy or not.
+
+(let [__
+      (fn [n]
+        (loop [x n
+               seen #{}]
+          (cond
+           (= 1 x)
+           true
+
+           (some #{x} seen)
+           false
+
+           :else
+           (recur (reduce +
+                          (map #(* % %)
+                               (map #(- (int %) 48) (str x))))
+                  (conj seen x)))))]
+  (and
+   (= (__ 7) true)
+   (= (__ 986543210) true)
+   (= (__ 2) false)
+   (= (__ 3) false)))
+
+
 ;; 88. Symmetric Difference
 
 ;; Write a function which returns the symmetric difference of two
@@ -1353,6 +1397,47 @@
    (= (__ #{:a :b :c} #{}) #{:a :b :c})
    (= (__ #{} #{4 5 6}) #{4 5 6})
    (= (__ #{[1 2] [2 3]} #{[2 3] [3 4]}) #{[1 2] [3 4]})))
+
+;; 89. Graph Tour
+
+;; Starting with a graph you must write a function that returns true
+;; if it is possible to make a tour of the graph in which every edge
+;; is visited exactly once.
+
+;; The graph is represented by a vector of tuples, where each tuple
+;; represents a single edge.
+
+;; The rules are:
+
+;; - You can start at any node.
+;; - You must visit each edge exactly once.
+;; - All edges are undirected.
+
+(let [__
+      (fn[coll]
+        (loop [[h & tl] coll
+               degrees {}]
+          (if (nil? h)
+            (do
+              (prn degrees)
+              (every? identity (map (even? (vals degrees)))))
+            (recur tl (update degrees h
+                              (fn[x] (if (nil? x) 1 (inc x))))))))]
+  (= true (__ [[:a :b]])))
+
+
+
+
+
+
+
+(let [__
+      (fn rec [f coll]
+        (lazy-seq
+         (when-let [s (seq coll)]
+           (cons (f (first s))
+                 (rec f (rest s))))))]
+
 
 ;; 90. Cartesian Product
 
@@ -1478,7 +1563,42 @@
    (= (__ '(:a nil ()))
       false)))
 
+;; 97. Pascal's Triangle
 
+;; Pascal's triangle is a triangle of numbers computed using the
+;; following rules:
+
+;; - The first row is 1.
+;; - Each successive row is computed by adding together adjacent
+;; numbers in the row above, and adding a 1 to the beginning and end
+;; of the row.
+
+;; Write a function which returns the nth row of Pascal's Triangle.
+(let [__
+      (fn rec [n]
+        (if (= 1 n)
+          [1]
+          (let [r (rec (dec n))
+                rl (concat [0] r)
+                rr (concat r [0])]
+            (vec (for [[x y]
+                       (map vector rl rr)]
+                   (+ x y))))))]
+
+  (and
+   (= (__ 1) [1])
+
+   (= (map __ (range 1 6))
+   [     [1]
+        [1 1]
+       [1 2 1]
+      [1 3 3 1]
+     [1 4 6 4 1]])
+
+   (= (__ 11)
+   [1 10 45 120 210 252 210 120 45 10 1])))
+
+;;
 
 ;; 99. Product Digits
 
@@ -1501,35 +1621,33 @@
 ;; ratios.
 
 (let [__
-      (fn rec[& args]
-        (let [gcd
-              (fn[a b]
-                (cond
-                 (< a b)
-                 (recur a (- b a))
+      (fn rec
+        ([x y]
+         (let [gcd
+               (fn[a b]
+                 (cond
+                  (< a b)
+                  (recur a (- b a))
 
-                 (< b a)
-                 (recur (- a b) b)
+                  (< b a)
+                  (recur (- a b) b)
 
-                 :else
-                 a))]
-          (let [n (count args)]
-            (prn args)
-            (cond
-             (= 1 n)
-             (first args)
+                  :else
+                  a))
 
-             :else
-             (let [a (first args)
-                   b (rec (rest args))]
-               (/ (* a b) (gcd a b)))))))]
+               lcm (fn[a b]
+                     (/ (* a b) (gcd a b)))]
 
-  (__ 5 3 7))
+           (lcm x y)))
+        ([x y & more]
+         (reduce rec (rec x y) more)))]
 
   (and
-   ;; (== (__ 2 3) 6)
-   (== (__ 5 3 7) 105)))
-
+   (== (__ 2 3) 6)
+   (== (__ 5 3 7) 105)
+   (== (__ 1/3 2/5) 2)
+   (== (__ 3/4 1/6) 3/2)
+   (== (__ 7 5/7 2 3/5) 210)))
 
 
 ;; 101. Levenshtein distance
@@ -1600,6 +1718,33 @@
    (= (__ "multi-word-key") "multiWordKey")
    (= (__ "leaveMeAlone") "leaveMeAlone")))
 
+;; 105. Identify keys and values
+
+;; Given an input sequence of keywords and numbers, create a map such
+;; that each key in the map is a keyword, and the value is a sequence
+;; of all the numbers (if any) between it and the next keyword in the
+;; sequence.
+
+(let [__
+      (fn[coll]
+        (loop [[head & more] coll last nil res {}]
+          (cond
+           (nil? head)
+           res
+
+           (keyword? head)
+           (recur more head (assoc res head []))
+
+           :else
+           (recur more last (assoc res last
+                                   (conj (get res last) head))))))]
+  (and
+   (= {} (__ []))
+   (= {:a [1]} (__ [:a 1]))
+   (= {:a [1], :b [2]} (__ [:a 1, :b 2]))
+   (= {:a [1 2 3], :b [], :c [4]} (__ [:a 1 2 3 :b :c 4]))))
+
+
 ;; 107. Simple closures
 
 ;; Lexical scope and first-class functions are two of the most basic
@@ -1659,7 +1804,152 @@
    (= (take 20 (filter __ (range)))
    [0 1 2 3 4 5 6 7 8 9 11 22 33 44 55 66 77 88 99 101])))
 
+;; 116. Prime Sandwich
 
+;; A balanced prime is a prime number which is also the mean of the
+;; primes directly before and after it in the sequence of valid
+;; primes. Create a function which takes an integer n, and returns
+;; true iff it is a balanced prime.
+
+
+(let [__
+      (fn[n]
+        (let [prime? (fn[n]
+                       (if (< n 2)
+                         false
+                         (let [candidates (range 2 n)]
+                           (not (some identity
+                                      (map #(zero? (mod n %)) candidates))))))]
+          (and
+           (>= n 5)
+           (prime? n)
+           (let [prev (first (filter prime? (iterate dec (dec n))))
+                 next (first (filter prime? (iterate inc (inc n))))]
+             (= (+ prev next) (* 2 n))))))]
+  (and
+   (= false (__ 4))
+   (= true (__ 563))
+   (= 1103 (nth (filter __ (range)) 15))))
+
+;; 117. For Science!
+
+;;  A mad scientist with tenure has created an experiment tracking
+;;  mice in a maze. Several mazes have been randomly generated, and
+;;  you've been tasked with writing a program to determine the mazes
+;;  in which it's possible for the mouse to reach the cheesy
+;;  endpoint. Write a function which accepts a maze in the form of a
+;;  collection of rows, each row is a string where:
+
+;;  spaces represent areas where the mouse can walk freely hashes (#)
+;;  represent walls where the mouse can not walk, M represents the
+;;  mouse's starting point and C represents the cheese which the mouse
+;;  must reach
+
+;; The mouse is not allowed to travel diagonally in the maze (only
+;; up/down/left/right), nor can he escape the edge of the maze. Your
+;; function must return true iff the maze is solvable by the mouse.
+
+(let [__
+      (fn[grid]
+        (let [index-of
+              (fn [xs x]
+                (loop [a (first xs)
+                       r (rest xs)
+                       i 0]
+                  (cond
+                   (= a x)    i
+                   (empty? r) nil
+                   :else      (recur (first r) (rest r) (inc i)))))
+
+          find-obj
+              (fn[obj]
+                (loop [r 0]
+                  (let [c (index-of (grid r) obj)]
+                    (if (not (nil? c))
+                      [r c]
+                      (recur (inc r))))))
+
+              walkable?
+              (fn[[r c]]
+                (let [cell (nth (nth grid r) c)]
+                  (or (= \space cell)
+                      (= \C cell))))
+
+              goal?
+              (fn[[r c]]
+                (= \C (nth (nth grid r) c)))
+
+              neighbors
+              (fn[[r c]]
+                (remove nil?
+                        [(if (< 0 r) [(dec r) c])
+                         (if (< 0 c) [r (dec c)])
+                         (if (< r (dec (count grid))) [(inc r) c])
+                         (if (< c (dec (count (grid 0)))) [r (inc c)])]))
+
+              [cr cc] (find-obj \C)]
+          (loop [open (conj clojure.lang.PersistentQueue/EMPTY (find-obj \M))
+                 closed #{}]
+
+            (if (empty? open)
+              false
+              (let
+                  [head (peek open)
+                   open (pop open)
+                   closed (conj closed head)]
+                ;; (prn "H: " head)
+                (if (goal? head)
+                  true
+                  (let [new (for [node (neighbors head)
+                                  :when (and
+                                         (not (contains? closed node))
+                                         (walkable? node))] node)]
+                    ;; (prn "N: " new)
+                    (recur (into open new) closed))))))))]
+
+  (and
+   (= true  (__ ["M   C"]))
+   (= false (__ ["M # C"]))
+
+   (= true  (__ ["#######"
+                 "#     #"
+                 "#  #  #"
+                 "#M # C#"
+                 "#######"]))
+
+   (= false (__ ["########"
+                 "#M  #  #"
+                 "#   #  #"
+                 "# # #  #"
+                 "#   #  #"
+                 "#  #   #"
+                 "#  # # #"
+                 "#  #   #"
+                 "#  #  C#"
+                 "########"]))
+
+   (= false (__ ["M     "
+                 "      "
+                 "      "
+                 "      "
+                 "    ##"
+                 "    #C"]))
+
+   (= true  (__ ["C######"
+              " #     "
+              " #   # "
+              " #   #M"
+              "     # "]))
+
+   (= true  (__ ["C# # # #"
+              "        "
+              "# # # # "
+              "        "
+              " # # # #"
+              "        "
+              "# # # #M"]))
+
+))
 
 ;; 118. Reimplement Map
 
@@ -1688,6 +1978,30 @@
            (take 2)))))
 
 
+;; 120. Sum of Square of digits
+
+;; Write a function which takes a collection of integers as an
+;; argument. Return the count of how many elements are smaller than
+;; the sum of their squared component digits. For example: 10 is
+;; larger than 1 squared plus 0 squared; whereas 15 is smaller than 1
+;; squared plus 5 squared.
+
+(let [__
+      (fn [coll]
+        (let [selector
+              (fn [n]
+                (let [digits (map #(- (int %) 48) (str n))
+                      sum-square-digits (reduce + (map (fn[n] (* n n)) digits))]
+                  (< n sum-square-digits)))]
+          (count (filter selector coll))))]
+
+  (and
+   (= 8 (__ (range 10)))
+   (= 19 (__ (range 30)))
+   (= 50 (__ (range 100)))
+   (= 50 (__ (range 1000)))))
+
+
 ;; 122. Read a binary number
 
 ;; Convert a binary number, provided in the form of a string, to its
@@ -1710,6 +2024,13 @@
    (= 1365  (__ "10101010101"))
    (= 65535 (__ "1111111111111111"))))
 
+;; 125. Gus' Quinundrum
+
+;; Create a function of no arguments which returns a string that is an
+;; exact copy of the function itself.
+
+;; Fun fact: Gus is the name of the 4Clojure dragon.
+
 ;; 126. Through the Looking Glass
 
 ;; Enter a value which satisfies the following
@@ -1717,6 +2038,27 @@
 (let [x java.lang.Class]
   (and (= (class x) x) x))
 
+;; 128. Recognize Playing Cards
+
+(let [__
+      (fn
+        [[suit rank]]
+        (let [suits (vec "HDCS")
+              suit->idx (zipmap suits (range (count suits)))
+
+              ranks (vec "23456789TJQKA")
+              rank->idx (zipmap ranks (range (count ranks)))]
+
+          {:suit ({0 :heart 1 :diamond 2 :club 3 :spade} (get suit->idx suit nil))
+           :rank (get rank->idx rank nil)}))]
+
+  (and
+   (= {:suit :diamond :rank 10} (__ "DQ"))
+   (= {:suit :heart :rank 3} (__ "H5"))
+   (= {:suit :club :rank 12} (__ "CA"))
+   (= (range 13) (map (comp :rank __ str)
+                   '[S2 S3 S4 S5 S6 S7
+                     S8 S9 ST SJ SQ SK SA]))))
 
 ;; 134. A nil key
 
@@ -1743,6 +2085,32 @@
 
 (let [__
       (fn[expr]
+
+
+;; 137. Digits and bases
+
+;; Write a function which returns a sequence of digits of a
+;; non-negative number (first argument) in numerical system with an
+;; arbitrary base (second argument). Digits should be represented with
+;; their integer values, e.g. 15 would be [1 5] in base 10, [1 1 1 1]
+;; in base 2 and [15] in base 16.
+(let [__
+      (fn [num base]
+        (loop [num num
+               res '()]
+          (if (zero? num)
+            (if (empty? res) [0] (vec res))
+            (recur (quot num base)
+                   (cons (rem num base) res)))))]
+
+  (and
+   (= [1 2 3 4 5 0 1] (__ 1234501 10))
+   (= [0] (__ 0 11))
+   (= [1 0 0 1] (__ 9 2))
+   (= [1 0] (let [n (rand-int 100000)](__ n n)))
+   (= [16 18 5 24 15 1] (__ Integer/MAX_VALUE 42))
+
+   ))
 
 
 ;; 143. Dot product
@@ -1790,6 +2158,56 @@
 
    (= __ (for [[x y] (partition 2 (range 20))]
            (+ x y)))))
+
+;; 146. Trees into tables
+
+;; Because Clojure's for macro allows you to "walk" over multiple
+;; sequences in a nested fashion, it is excellent for transforming all
+;; sorts of sequences. If you don't want a sequence as your final
+;; output (say you want a map), you are often still best-off using
+;; for, because you can produce a sequence and feed it into a map, for
+;; example.
+
+;; For this problem, your goal is to "flatten" a map of hashmaps. Each
+;; key in your output map should be the "path"[*] that you would have to
+;; take in the original map to get to a value, so for example {1 {2
+;; 3}} should result in {[1 2] 3}. You only need to flatten one level
+;; of maps: if one of the values is a map, just leave it alone.
+
+;; [*] That is, (get-in original [k1 k2]) should be the same as (get
+;; result [k1 k2])
+
+
+
+;; 147. Pascal's Trapezoid
+
+;; Write a function that, for any given input vector of numbers,
+;; returns an infinite lazy sequence of vectors, where each next one
+;; is constructed from the previous following the rules used in
+;; Pascal's Triangle. For example, for [3 1 2], the next row is [3 4 3
+;; 2].
+
+;; Beware of arithmetic overflow! In clojure (since version 1.3 in
+;; 2011), if you use an arithmetic operator like + and the result is
+;; too large to fit into a 64-bit integer, an exception is thrown. You
+;; can use +' to indicate that you would rather overflow into
+;; Clojure's slower, arbitrary-precision bigint.
+
+(let [__
+      (fn rec [v]
+        (lazy-seq
+         (let [vl (concat [0] v)
+               vr (concat v [0])
+               vv (vec (for [[x y] (map vector vl vr)] (+' x y)))]
+           (cons v (rec vv)))))]
+
+  (and
+   (= (second (__ [2 3 2])) [2 5 5 2])
+   (= (take 5 (__ [1])) [[1] [1 1] [1 2 1] [1 3 3 1] [1 4 6 4 1]])
+   (= (take 2 (__ [3 1 2])) [[3 1 2] [3 4 3 2]])
+   (= (take 100 (__ [2 4 2])) (rest (take 101 (__ [2 2]))))))
+
+
 
 ;; 153. Pairwise Disjoint Sets
 
@@ -1913,8 +2331,6 @@
  (clojure.set/subset? #{1 2} __)))
 
 
-
-
 ;; 162. Logical falsity and truth
 
 ;; In Clojure, only nil and false represent the values of logical
@@ -1931,8 +2347,6 @@
    (= __ (if [0] 1 0))
    (= __ (if 0 1 0))
    (= __ (if 1 1 0))))
-
-
 
 ;; 166. Comparisons
 
@@ -1964,3 +2378,123 @@
    (= :eq (__ (fn [x y] (< (count x) (count y))) "pear" "plum"))
    (= :lt (__ (fn [x y] (< (mod x 5) (mod y 5))) 21 3))
    (= :gt (__ > 0 2))))
+
+;; 171. Intervals
+
+;; Write a function that takes a sequence of integers and returns a
+;; sequence of "intervals". Each interval is a vector of two
+;; integers, start and end, such that all integers between start and
+;; end (inclusive) are contained in the input sequence.
+
+;; (let [__
+;;       (fn[coll]
+;;         (let [update
+;;               (fn [interval n]
+;;                 (let [a (first interval)
+;;                       lt-a (dec a)
+;;                       b (second interval)
+;;                       gt-b (inc b)
+;;                       rng (range lt-a (inc gt-b))
+;;                       ]
+;;                   (if
+
+
+;; 173. Intro to Destructuring 2
+
+;; Sequential destructuring allows you to bind symbols to parts of
+;; sequential things (vectors, lists, seqs, etc.): (let [bindings* ]
+;; exprs*) Complete the bindings so all let-parts evaluate to 3.
+
+(= 3
+  (let [[] [+ (range 3)]] (apply __))
+  (let [[[__] b] [[+ 1] 2]] (__ b))
+  (let [[__] [inc 2]] (__)))
+
+
+;; 178. Best Hand
+
+;; Following on from Recognize Playing Cards, determine the best poker
+;; hand that can be made with five cards. The hand rankings are listed
+;; below for your convenience.
+
+;; Straight flush: All cards in the same suit, and in sequence
+;; Four of a kind: Four of the cards have the same rank
+;; Full House: Three cards of one rank, the other two of another rank
+;; Flush: All cards in the same suit
+;; Straight: All cards in sequence (aces can be high or low, but not both at once)
+;; Three of a kind: Three of the cards have the same rank
+;; Two pair: Two pairs of cards have the same rank
+;; Pair: Two cards have the same rank
+;; High card: None of the above conditions are met
+
+(let [__
+      (fn [strings]
+        (let [str->card
+              (fn
+                [[suit rank]]
+                (let [suits (vec "HDCS")
+                      suit->idx (zipmap suits (range (count suits)))
+
+                      ranks (vec "23456789TJQKA")
+                      rank->idx (zipmap ranks (range (count ranks)))]
+
+                  { :suit ({0 :heart 1 :diamond 2 :club 3 :spade}
+                           (get suit->idx suit nil))
+                   :rank (get rank->idx rank nil) } ))]
+
+          (let [cards (map str->card strings)
+                suits (map :suit cards)
+                ranks (map :rank cards)
+                same-suit (apply = suits)
+                straight  (let [sorted-ranks (sort ranks)]
+                            (or
+                             (= sorted-ranks (range (apply min ranks)
+                                                    (inc (apply max ranks))))
+                            (= sorted-ranks '(0 1 2 3 12))))
+                groups (map (fn[[rank cnt]] [(count cnt) rank])
+                            (reverse (sort-by (comp count second)
+                                              (group-by identity ranks))))]
+
+            (cond
+             (and same-suit straight)
+             :straight-flush
+
+             (= 4 (ffirst groups))
+             :four-of-a-kind
+
+             (and (= 3 (ffirst groups)) (= 2 (first (second groups))))
+             :full-house
+
+             same-suit
+             :flush
+
+             straight
+             :straight
+
+             (= 3 (ffirst groups))
+             :three-of-a-kind
+
+             (and (= 2 (ffirst groups)) (= 2 (first (second groups))))
+             :two-pair
+
+             (= 2 (ffirst groups))
+             :pair
+
+             :else
+             :high-card)
+            )
+          )
+        )
+      ]
+
+  (and
+   (= :high-card (__ ["HA" "D2" "H3" "C9" "DJ"]))
+   (= :pair (__ ["HA" "HQ" "SJ" "DA" "HT"]))
+   (= :two-pair (__ ["HA" "DA" "HQ" "SQ" "HT"]))
+   (= :three-of-a-kind (__ ["HA" "DA" "CA" "HJ" "HT"]))
+   (= :straight (__ ["HA" "DK" "HQ" "HJ" "HT"]))
+   (= :straight (__ ["HA" "H2" "S3" "D4" "C5"]))
+   (= :flush (__ ["HA" "HK" "H2" "H4" "HT"]))
+   (= :full-house (__ ["HA" "DA" "CA" "HJ" "DJ"]))
+   (= :four-of-a-kind (__ ["HA" "DA" "CA" "SA" "DJ"]))
+   (= :straight-flush (__ ["HA" "HK" "HQ" "HJ" "HT"]))))

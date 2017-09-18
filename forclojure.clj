@@ -1171,6 +1171,36 @@
 ;; words. Words without any anagrams should not be included in the
 ;; result.
 
+(let [__
+      (fn[words]
+        (let [pairs
+              (fn [a]
+                (for [xa a xb a
+                      :let [sxa (sort xa)
+                            sxb (sort xb)]
+                      :when (and (not (= xa xb))
+                                 (= sxa sxb))] [sxa [xa xb]]))
+              ->map
+              (fn[coll]
+                (loop [[head & more] coll
+                       map {}]
+                  (if (nil? head)
+                    map
+                    (let [[key [fst snd]] head]
+                      (recur more
+                             (assoc map key
+                                    (conj (get map key #{}) fst snd)))))))]
+
+          (set (vals (->map (pairs words))))))]
+
+  (and
+   (= (__ ["meat" "mat" "team" "mate" "eat"])
+      #{#{"meat" "team" "mate"}})
+
+   (= (__ ["veer" "lake" "item" "kale" "mite" "ever"])
+      #{#{"veer" "ever"} #{"lake" "kale"} #{"mite" "item"}})))
+
+
 ;; 78. Reimplement trampoline
 
 ;; Reimplement the function described in "Intro to Trampoline".
@@ -1443,23 +1473,21 @@
 
 ;; Write a function which calculates the Cartesian product of two
 ;; sets.
-
-
 (let [__
       (fn [a b]
         (into #{} (for [xa a xb b] [xa xb])))]
 
   (and
    (= (__ #{"ace" "king" "queen"} #{"♠" "♥" "♦" "♣"})
-   #{["ace"   "♠"] ["ace"   "♥"] ["ace"   "♦"] ["ace"   "♣"]
-     ["king"  "♠"] ["king"  "♥"] ["king"  "♦"] ["king"  "♣"]
-     ["queen" "♠"] ["queen" "♥"] ["queen" "♦"] ["queen" "♣"]})
+      #{["ace"   "♠"] ["ace"   "♥"] ["ace"   "♦"] ["ace"   "♣"]
+        ["king"  "♠"] ["king"  "♥"] ["king"  "♦"] ["king"  "♣"]
+        ["queen" "♠"] ["queen" "♥"] ["queen" "♦"] ["queen" "♣"]})
 
    (= (__ #{1 2 3} #{4 5})
-   #{[1 4] [2 4] [3 4] [1 5] [2 5] [3 5]})
+      #{[1 4] [2 4] [3 4] [1 5] [2 5] [3 5]})
 
    (= 300 (count (__ (into #{} (range 10))
-                  (into #{} (range 30)))))))
+                     (into #{} (range 30)))))))
 
 
 (let [[eye & more] #{:ace :king :queen :jack}]
@@ -1516,6 +1544,112 @@
    (= 3999 (__ "MMMCMXCIX"))
    (= 48 (__ "XLVIII"))))
 
+;; 94. The Game of Life
+
+;; The game of life is a cellular automaton devised by mathematician John Conway.
+
+;; The 'board' consists of both live (#) and dead ( ) cells. Each cell
+;; interacts with its eight neighbours (horizontal, vertical,
+;; diagonal), and its next state is dependent on the following rules:
+
+;; 1) Any live cell with fewer than two live neighbours dies, as if caused by under-population.
+;; 2) Any live cell with two or three live neighbours lives on to the next generation.
+;; 3) Any live cell with more than three live neighbours dies, as if by overcrowding.
+;; 4) Any dead cell with exactly three live neighbours becomes a live cell, as if by reproduction.
+
+;; Write a function that accepts a board, and returns a board
+;; representing the next generation of cells.
+
+(let [__
+      (fn[grid]
+        (let [nrows (count grid)
+              ncols (count (grid 0))
+
+              grid->set
+              (fn[grid]
+                (loop [r 0 c 0 res #{}]
+                  (let [cell (nth (nth grid r) c)
+                        next-c (mod (inc c) ncols)
+                        next-r (if (zero? next-c) (inc r) r)]
+                    (if (= nrows next-r)
+                      res
+                      (recur next-r next-c
+                             (if (= \# cell)
+                               (conj res [r c])
+                               res))))))
+
+              set->grid
+              (fn[set]
+                (let [tmp (for [r (range nrows)
+                                c (range ncols)]
+                            (some #{[r c]} set))]
+                  (into[] (for [r (partition ncols
+                                             (map #(if (nil? %) \space \#) tmp))]
+                            (apply str (interpose "" r))))))
+
+              neighbors
+              (fn[[x y]]
+                (for [dx [-1 0 1]
+                      dy (if (zero? dx)
+                           [-1 1]
+                           [-1 0 1])]
+                  [(+ dx x) (+ dy y)]))
+
+              live
+              (fn[n alive?]
+                (or (= n 3)
+                    (and (= n 2) alive?)))
+
+              step
+              (fn[world]
+                (set
+                 (for [[cell n] (frequencies (mapcat neighbors world))
+                       :when (live n (world cell))]
+                   cell)))]
+
+          (-> grid
+              grid->set
+              step
+              set->grid)))]
+
+  (and
+   (= (__ ["      "
+           " ##   "
+           " ##   "
+           "   ## "
+           "   ## "
+           "      "])
+      ["      "
+       " ##   "
+       " #    "
+       "    # "
+       "   ## "
+       "      "])
+
+   (= (__ ["     "
+           "     "
+           " ### "
+           "     "
+           "     "])
+      ["     "
+       "  #  "
+       "  #  "
+       "  #  "
+       "     "])
+
+   (= (__ ["      "
+           "      "
+           "  ### "
+           " ###  "
+           "      "
+           "      "])
+      ["      "
+       "   #  "
+       " #  # "
+       " #  # "
+       "  #   "
+       "      "])))
+
 ;; 95. To Tree, or not to Tree
 
 ;; Write a predicate which checks whether or not a given sequence
@@ -1563,6 +1697,57 @@
    (= (__ '(:a nil ()))
       false)))
 
+;; 96. Beauty is symmetry
+
+;; Let us define a binary tree as "symmetric" if the left half of the
+;; tree is the mirror image of the right half of the tree. Write a
+;; predicate to determine whether or not a given binary tree is
+;; symmetric. (see To Tree, or not to Tree for a reminder on the tree
+;; representation we're using).
+
+(let [__
+      (fn [t]
+        (let [lhs (fn[t] (nth t 1))
+              rhs (fn[t] (nth t 2))
+
+              aux
+              (fn rec[l r]
+                (cond
+
+                 (nil? l)
+                 (nil? r)
+
+                 (nil? r)
+                 (nil? l)
+
+                 :else
+                 (and (= (first l)
+                         (first r))
+
+                      (rec (lhs l) (rhs r))
+                      (rec (rhs l) (lhs r)))))]
+          (if (nil? t)
+            true
+            (aux (lhs t) (rhs t)))))]
+
+  (and
+   (= (__ '(:a (:b nil nil) (:b nil nil)))
+      true)
+   (= (__ '(:a (:b nil nil) nil))
+      false)
+   (= (__ '(:a (:b nil nil) (:c nil nil)))
+      false)
+
+   (= (__ [1 [2 nil [3 [4 [5 nil nil] [6 nil nil]] nil]]
+           [2 [3 nil [4 [6 nil nil] [5 nil nil]]] nil]])
+      true)
+
+
+   (= (__ [1 [2 nil [3 [4 [5 nil nil] [6 nil nil]] nil]]
+           [2 [3 nil [4 [5 nil nil] [6 nil nil]]] nil]])
+      false)
+   ))
+
 ;; 97. Pascal's Triangle
 
 ;; Pascal's triangle is a triangle of numbers computed using the
@@ -1598,7 +1783,34 @@
    (= (__ 11)
    [1 10 45 120 210 252 210 120 45 10 1])))
 
-;;
+;; 98. Equivalence Classes
+
+;; A function f defined on a domain D induces an equivalence relation
+;; on D, as follows: a is equivalent to b with respect to f if and
+;; only if (f a) is equal to (f b). Write a function with arguments f
+;; and D that computes the equivalence classes of D with respect to f.
+
+(let [__
+      (fn[f coll]
+        (loop [[eye & more] (seq coll)
+               map {}]
+          (if (nil? eye)
+            (into #{} (vals map))
+            (let [class (f eye)]
+              (recur more (assoc map class
+                                 (conj (get map class #{}) eye)))))))]
+  (and
+   (= (__ #(* % %) #{-2 -1 0 1 2})
+      #{#{0} #{1 -1} #{2 -2}})
+
+   (= (__ #(rem % 3) #{0 1 2 3 4 5 })
+   #{#{0 3} #{1 4} #{2 5}})
+
+   (= (__ identity #{0 1 2 3 4})
+   #{#{0} #{1} #{2} #{3} #{4}})
+
+   (= (__ (constantly true) #{0 1 2 3 4})
+   #{#{0 1 2 3 4}})))
 
 ;; 99. Product Digits
 
@@ -2084,8 +2296,21 @@
 ;; and instead just calculates left to right.
 
 (let [__
-      (fn[expr]
-
+      (fn[& expr]
+        (loop [[eye & more] expr
+               symb :term
+               op +
+               res 0]
+          (if (nil? eye)
+            res
+            (case symb
+              :term (recur more :oper nil (op res eye))
+              :oper (recur more :term eye res)))))]
+  (and
+   (= 7  (__ 2 + 5))
+   (= 42 (__ 38 + 48 - 2 / 2))
+   (= 8  (__ 10 / 2 - 1 * 2))
+   (= 72 (__ 20 / 2 + 2 + 4 + 8 - 6 - 10 * 9))))
 
 ;; 137. Digits and bases
 
@@ -2177,6 +2402,30 @@
 ;; [*] That is, (get-in original [k1 k2]) should be the same as (get
 ;; result [k1 k2])
 
+(let [__
+      (fn[map]
+        (into {}
+              (for [k1 (keys map)
+                    k2 (keys (map k1))]
+                [[k1 k2] ((map k1) k2)])))]
+
+  (and
+   (= (__ '{a {p 1, q 2}
+            b {m 3, n 4}})
+      '{[a p] 1, [a q] 2
+        [b m] 3, [b n] 4})
+
+   (= (__ '{[1] {a b c d}
+            [2] {q r s t u v w x}})
+      '{[[1] a] b, [[1] c] d,
+        [[2] q] r, [[2] s] t,
+        [[2] u] v, [[2] w] x})
+
+   (= (__ '{[1] {a b c d}
+            [2] {q r s t u v w x}})
+      '{[[1] a] b, [[1] c] d,
+        [[2] q] r, [[2] s] t,
+        [[2] u] v, [[2] w] x})))
 
 
 ;; 147. Pascal's Trapezoid
@@ -2406,9 +2655,9 @@
 ;; exprs*) Complete the bindings so all let-parts evaluate to 3.
 
 (= 3
-  (let [[] [+ (range 3)]] (apply __))
-  (let [[[__] b] [[+ 1] 2]] (__ b))
-  (let [[__] [inc 2]] (__)))
+   (let [[x y] [+ (range 3)]] (apply x y))
+   (let [[[x y] b] [[+ 1] 2]] (x y b))
+   (let [[x y] [inc 2]] (x y)))
 
 
 ;; 178. Best Hand

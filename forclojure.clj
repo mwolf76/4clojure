@@ -2059,6 +2059,41 @@
    (= (__ "multi-word-key") "multiWordKey")
    (= (__ "leaveMeAlone") "leaveMeAlone")))
 
+;; 104. Write Roman Numerals
+
+;; This is the inverse of Problem 92, but much easier. Given an
+;; integer smaller than 4000, return the corresponding roman numeral
+;; in uppercase, adhering to the subtractive principle.
+
+(let [__
+      (fn[n]
+        (loop [drum [["M" 1000]["CM" 900]["D" 500]["CD" 400]["C" 100]["XC" 90]
+                     ["L" 50]["XL" 40] ["X" 10]["IX" 9]["V" 5]["IV" 4] ["I" 1]]
+               in  n
+               out []]
+
+          (let [head (first drum)
+                lit (first head)
+                val (second head)]
+
+            (cond
+             (zero? in)
+             (apply str (interpose "" out))
+
+             :else
+             (if (<= val in)
+               (recur drum (- in val) (conj out lit))
+               (recur (rest drum) in out))))))]
+
+  (and
+   (= "I" (__ 1))
+   (= "XXX" (__ 30))
+   (= "IV" (__ 4))
+   (= "CXL" (__ 140))
+   (= "DCCCXXVII" (__ 827))
+   (= "MMMCMXCIX" (__ 3999))
+   (= "XLVIII" (__ 48))))
+
 ;; 105. Identify keys and values
 
 ;; Given an input sequence of keywords and numbers, create a map such
@@ -2277,20 +2312,18 @@
                  "    #C"]))
 
    (= true  (__ ["C######"
-              " #     "
-              " #   # "
-              " #   #M"
-              "     # "]))
+                 " #     "
+                 " #   # "
+                 " #   #M"
+                 "     # "]))
 
    (= true  (__ ["C# # # #"
-              "        "
-              "# # # # "
-              "        "
-              " # # # #"
-              "        "
-              "# # # #M"]))
-
-))
+                 "        "
+                 "# # # # "
+                 "        "
+                 " # # # #"
+                 "        "
+                 "# # # #M"]))))
 
 ;; 118. Reimplement Map
 
@@ -2341,6 +2374,51 @@
    (= 19 (__ (range 30)))
    (= 50 (__ (range 100)))
    (= 50 (__ (range 1000)))))
+
+
+;; 121. Universal Computation Engine
+
+;; Given a mathematical formula in prefix notation, return a function
+;; that calculates the value of the formula. The formula can contain
+;; nested calculations using the four basic mathematical operators,
+;; numeric constants, and symbols representing variables. The returned
+;; function has to accept a single parameter containing the map of
+;; variable names to their values.
+
+(let [__
+      (fn [expr]
+        (let [ops {'* * '/ / '+ + '- -}
+              aux (fn rec [env expr]
+                    (cond
+                     (list? expr)
+                     (apply (ops (first expr))
+                            (map #(rec env %) (rest expr)))
+
+                     (symbol? expr)
+                     (get env expr nil)
+
+                     :else
+                     expr))]
+
+          (fn [env]
+            (aux env expr))))]
+
+  (and
+   (= 2 ((__ '(/ a b))
+         '{b 8 a 16}))
+
+   (= 8 ((__ '(+ a b 2))
+         '{a 2 b 4}))
+
+   (= [6 0 -4]
+      (map (__ '(* (+ 2 a)
+                   (- 10 b)))
+           '[{a 1 b 8}
+             {b 5 a -2}
+             {a 2 b 11}]))
+   (= 1 ((__ '(/ (+ x 2)
+                 (* 3 (+ y 1))))
+         '{x 4 y 1}))))
 
 
 ;; 122. Read a binary number
@@ -2462,10 +2540,56 @@
    (= [0] (__ 0 11))
    (= [1 0 0 1] (__ 9 2))
    (= [1 0] (let [n (rand-int 100000)](__ n n)))
-   (= [16 18 5 24 15 1] (__ Integer/MAX_VALUE 42))
+   (= [16 18 5 24 15 1] (__ Integer/MAX_VALUE 42))))
 
-   ))
+;; 141. Tricky Card Games
 
+;; In trick-taking card games such as bridge, spades, or hearts, cards
+;; are played in groups known as "tricks" - each player plays a single
+;; card, in order; the first player is said to "lead" to the
+;; trick. After all players have played, one card is said to
+;; have "won" the trick. How the winner is determined will vary by
+;; game, but generally the winner is the highest card played in the
+;; suit that was led. Sometimes (again varying by game), a particular
+;; suit will be designated "trump", meaning that its cards are more
+;; powerful than any others: if there is a trump suit, and any trumps
+;; are played, then the highest trump wins regardless of what was led.
+
+;; Your goal is to devise a function that can determine which of a
+;; number of cards has won a trick. You should accept a trump suit,
+;; and return a function winner. Winner will be called on a sequence
+;; of cards, and should return the one which wins the trick. Cards
+;; will be represented in the format returned by Problem 128,
+;; Recognize Playing Cards: a hash-map of :suit and a
+;; numeric :rank. Cards with a larger rank are stronger.
+
+(let [__
+      (fn[trump]
+        (fn[cards]
+          (let [lead
+                (-> cards first :suit)
+
+                value
+                (fn[card]
+                  (- (+ (if (= (:suit card) trump) 30 0)
+                        (if (= (:suit card) lead) 15 0)
+                        (:rank card))))]
+
+              (first (sort-by value cards)))))]
+
+  (and
+   (let [notrump (__ nil)]
+     (and (= {:suit :club :rank 9}  (notrump [{:suit :club :rank 4}
+                                              {:suit :club :rank 9}]))
+          (= {:suit :spade :rank 2} (notrump [{:suit :spade :rank 2}
+                                              {:suit :club :rank 10}])))))
+
+  (= {:suit :club :rank 10} ((__ :club) [{:suit :spade :rank 2}
+                                         {:suit :club :rank 10}]))
+
+  (= {:suit :heart :rank 8}
+     ((__ :heart) [{:suit :heart :rank 6} {:suit :heart :rank 8}
+                   {:suit :diamond :rank 10} {:suit :heart :rank 4}])))
 
 ;; 143. Dot product
 
@@ -2840,6 +2964,55 @@
    (let [[[x y] b] [[+ 1] 2]] (x y b))
    (let [[x y] [inc 2]] (x y)))
 
+;; 177. Balancing Brackets
+
+;; When parsing a snippet of code it's often a good idea to do a
+;; sanity check to see if all the brackets match up. Write a function
+;; that takes in a string and returns truthy if all square [ ] round (
+;; ) and curly { } brackets are properly paired and legally nested, or
+;; returns falsey otherwise.
+
+(let [__
+      (fn [s]
+        (let [char->int
+              (fn [c]
+                (case c \{ 1, \} -1, \( 2, \) -2, \[ 3, \] -3, 0))
+
+              abs
+              (fn [n]
+                (if (<= 0 n) n (- n)))]
+
+          (loop [[eye & more :as in] (remove zero?
+                                             (map char->int s))
+                 stack []]
+
+            (let [head (or (peek stack) 0)]
+              (cond
+               (nil? eye)
+               (zero? head)
+
+               (>= eye 0)
+               (recur more (conj stack eye))
+
+               (zero? (+ eye head))
+               (recur more (pop stack))
+
+               :else
+               false)))))]
+
+  (and
+   (__ "This string has no brackets.")
+   (__ "class Test {
+      public static void main(String[] args) {
+        System.out.println(\"Hello world.\");
+      }
+    }")
+   (not (__ "(start, end]"))
+   (not (__ "())"))
+   (not (__ "[ { ] } "))
+   (__ "([]([(()){()}(()(()))(([[]]({}()))())]((((()()))))))")
+   (not (__ "([]([(()){()}(()(()))(([[]]({}([)))())]((((()()))))))"))
+   (not (__ "["))))
 
 ;; 178. Best Hand
 

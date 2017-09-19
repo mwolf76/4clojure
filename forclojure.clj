@@ -762,21 +762,89 @@
 ;; functions, and create a function that applies them from
 ;; right-to-left. Special restrictions: comp
 
-;; (let [__
-;;       (fn
-;;         ([f g]
-;;          (fn
-;;            ([] (f (g)))
-;;            ([x] (f (g x)))
-;;            ([x y] (f (g x y)))
-;;            ([x y z] (f (g x y z)))
-;;            ([x y z & args] (f (apply g x y z args))))))]
-;;   (and
-;;    (= [3 2 1] ((__ rest reverse) [1 2 3 4]))
-;;    (= 5 ((__ (partial + 3) second) [1 2 3 4]))
-;;    (= true ((__ zero? #(mod % 8) +) 3 5 7 9))
-;;   ((__ #(.toUpperCase %) #(apply str %) take) 5 "hello world")))
+(let [__
+      (fn rec
+        ([] identity)
+        ([f] f)
+        ([f g]
+         (fn
+           ([] (f (g)))
+           ([x] (f (g x)))
+           ([x y] (f (g x y)))
+           ([x y z] (f (g x y z)))
+           ([x y z & args] (f (apply g x y z args)))))
+        ([f g & fs]
+         (reduce rec (list* f g fs))))]
 
+  (and
+   (= [3 2 1] ((__ rest reverse) [1 2 3 4]))
+
+   (= 5 ((__ (partial + 3) second) [1 2 3 4]))
+
+   (= true ((__ zero? #(mod % 8) +) 3 5 7 9))
+
+   (= "HELLO" ((__ #(.toUpperCase %) #(apply str %) take) 5 "hello world"))))
+
+;; 59. Juxtaposition
+
+(let [__
+      (fn
+        ([f]
+         (fn
+           ([] [(f)])
+           ([x] [(f x)])
+           ([x y] [(f x y)])
+           ([x y z] [(f x y z)])
+           ([x y z & args] [(apply f x y z args)])))
+        ([f g]
+         (fn
+           ([] [(f) (g)])
+           ([x] [(f x) (g x)])
+           ([x y] [(f x y) (g x y)])
+           ([x y z] [(f x y z) (g x y z)])
+           ([x y z & args] [(apply f x y z args) (apply g x y z args)])))
+        ([f g h]
+         (fn
+           ([] [(f) (g) (h)])
+           ([x] [(f x) (g x) (h x)])
+           ([x y] [(f x y) (g x y) (h x y)])
+           ([x y z] [(f x y z) (g x y z) (h x y z)])
+           ([x y z & args] [(apply f x y z args) (apply g x y z args) (apply h x y z args)])))
+        ([f g h & fs]
+         (let [fs (list* f g h fs)]
+           (fn
+             ([] (reduce #(conj %1 (%2)) [] fs))
+             ([x] (reduce #(conj %1 (%2 x)) [] fs))
+             ([x y] (reduce #(conj %1 (%2 x y)) [] fs))
+             ([x y z] (reduce #(conj %1 (%2 x y z)) [] fs))
+             ([x y z & args] (reduce #(conj %1 (apply %2 x y z args)) [] fs))))))]
+
+  (and
+   (= [21 6 1] ((__ + max min) 2 3 5 1 6 4))
+   (= ["HELLO" 5] ((__ #(.toUpperCase %) count) "hello"))
+   (= [2 6 4] ((__ :a :c :b) {:a 2, :b 4, :c 6, :d 8 :e 10}))))
+
+;; 60. Sequence Reductions
+
+(let [__
+      (fn rec
+        ([f coll]
+         (lazy-seq
+          (if-let [s (seq coll)]
+            (rec f (first s) (rest s))
+            (list (f)))))
+        ([f init coll]
+         (cons init
+               (lazy-seq
+                (when-let [s (seq coll)]
+                  (rec f (f init (first s)) (rest s)))))))]
+
+  (and
+   (= (take 5 (__ + (range))) [0 1 3 6 10])
+
+   (= (__ conj [1] [2 3 4]) [[1] [1 2] [1 2 3] [1 2 3 4]])
+
+   (= (last (__ * 2 [3 4 5])) (reduce * 2 [3 4 5]) 120)))
 
 
 ;; 61. Map Construction
@@ -964,6 +1032,28 @@
 ;; combined with the mapping in the result by calling (f val-in-result
 ;; val-in-latter)
 
+(let [__
+      (fn
+        [f & maps]
+        (when (some identity maps)
+          (let [merge-entry (fn [m e]
+                              (let [k (key e) v (val e)]
+                                (if (contains? m k)
+                                  (assoc m k (f (get m k) v))
+                                  (assoc m k v))))
+                merge2 (fn [m1 m2]
+                         (reduce merge-entry (or m1 {}) (seq m2)))]
+            (reduce merge2 maps))))]
+
+  (and
+   (= (__ * {:a 2, :b 3, :c 4} {:a 2} {:b 2} {:c 5})
+      {:a 4, :b 6, :c 20})
+
+   (= (__ - {1 10, 2 20} {1 3, 2 10, 3 15})
+      {1 7, 2 10, 3 15})
+
+   (= (__ concat {:a [3], :b [6]} {:a [4 5], :c [8 9]} {:b [7]})
+      {:a [3 4 5], :b [6 7], :c [8 9]})))
 
 
 
@@ -1203,6 +1293,28 @@
 
 ;; 78. Reimplement trampoline
 
+(let [__
+      (fn rec
+        ([f]
+         (let [ret (f)]
+           (if (fn? ret)
+             (recur ret)
+             ret)))
+        ([f & args]
+         (rec #(apply f args))))]
+
+  (and
+   (= (letfn [(triple [x] #(sub-two (* 3 x)))
+          (sub-two [x] #(stop?(- x 2)))
+          (stop? [x] (if (> x 50) x #(triple x)))]
+        (__ triple 2))
+      82)
+
+   (= (letfn [(my-even? [x] (if (zero? x) true #(my-odd? (dec x))))
+          (my-odd? [x] (if (zero? x) false #(my-even? (dec x))))]
+    (map (partial __ my-even?) (range 6)))
+  [true false true false true false])))
+
 ;; Reimplement the function described in "Intro to Trampoline".
 
 (letfn [__
@@ -1283,8 +1395,10 @@
 ;; they cannot.
 
 (let [__
-      (fn [chain]
-        (let [dist
+      (fn [in]
+        (let [words (into [] in)
+
+              dist
               (fn[s t]
                 (let [lev
                       (memoize
@@ -1309,19 +1423,38 @@
 
                       ;; rebind
                       lev (partial lev lev)]
-                  (lev s t)))]
+                  (lev s t)))
 
-          (if (< (count chain) 2)
-            true
-            (let [f (first chain)
-                  s (second chain)]
-              (prn f s)
-              (if (= 1 (dist f s))
-                (recur (rest chain))
-                false)))))]
+              adj
+              (fn[s]
+                (loop [[fst & more] s]
+                  (cond
+
+                   (nil? more)
+                   true
+
+                   (= 1 (dist fst (first more)))
+                   (recur more)
+
+                   :else
+                   false)))
+
+              permutations
+              (fn rec [a-set]
+                (cond (empty? a-set) '(())
+                      (empty? (rest a-set)) (list (apply list a-set))
+                      :else (for [x a-set y (rec (remove #{x} a-set))]
+                              (cons x y))))]
+
+          (not (empty? (filter adj (permutations words))))))]
 
   (and
-   (= true (__ ["hat" "coat" "dog" "cat" "oat" "cot" "hot" "hog"]))))
+   (= true (__ #{"hat" "coat" "dog" "cat" "oat" "cot" "hot" "hog"}))
+   (= false (__ #{"cot" "hot" "bat" "fat"}))
+   (= false (__ #{"to" "top" "stop" "tops" "toss"}))
+   (= true (__ #{"spout" "do" "pot" "pout" "spot" "dot"}))
+   (= true (__ #{"share" "hares" "shares" "hare" "are"}))
+   (= false (__ #{"share" "hares" "hare" "are"}))))
 
 
 ;; 83. A Half Truth
@@ -1454,10 +1587,6 @@
             (recur tl (update degrees h
                               (fn[x] (if (nil? x) 1 (inc x))))))))]
   (= true (__ [[:a :b]])))
-
-
-
-
 
 
 
@@ -2358,6 +2487,27 @@
    (= 32 (__ [1 2 3] [4 5 6]))
    (= 256 (__ [2 5 6] [100 10 1]))))
 
+;; 144. Oscilrate
+
+;; Write an oscillating iterate: a function that takes an initial
+;; value and a variable number of functions. It should return a lazy
+;; sequence of the functions applied to the value in order, restarting
+;; from the first function after it hits the end.
+
+(let [__
+      (fn [base & fs]
+        (let [aux
+              (fn step [curr idx]
+                (lazy-seq
+                 ((fn[]
+                    (let [f (nth fs idx)
+                          next (mod (inc idx) (count fs))]
+                    (cons curr (step (f curr) next)))))))]
+          (aux base 0)))]
+  (and
+   (= (take 3 (__ 3.14 int double)) [3.14 3 3.0])
+   (= (take 5 (__ 3 #(- % 3) #(+ 5 %))) [3 0 5 2 7])
+   (= (take 12 (__ 0 inc dec inc dec inc)) [0 1 0 1 0 1 2 1 2 1 2 3])))
 
 ;; 145. For the win
 
@@ -2457,6 +2607,37 @@
    (= (take 100 (__ [2 4 2])) (rest (take 101 (__ [2 2]))))))
 
 
+;; 148. The Big Divide
+
+;; Write a function which calculates the sum of all natural numbers
+;; under n (first argument) which are evenly divisible by at least one
+;; of a and b (second and third argument). Numbers a and b are
+;; guaranteed to be coprimes.
+
+;; Note: Some test cases have a very large n, so the most obvious
+;; solution will exceed the time limit.
+
+(let [__
+      (fn[n a b]
+        (let [multiple?
+              (comp zero? rem)
+
+              pred?
+              (fn[n] (or (multiple? n a)
+                         (multiple? n b)))]
+
+          (reduce +' (filter pred? (range n)))))]
+  (and
+   (= 0 (__ 3 17 11))
+   (= 23 (__ 10 3 5))
+   (= 233168 (__ 1000 3 5))
+   (= "2333333316666668" (str (__ 100000000 3 5)))
+   (= "110389610389889610389610"
+      (str (__ (* 10000 10000 10000) 7 11)))
+   (= "1277732511922987429116"
+      (str (__ (* 10000 10000 10000) 757 809)))
+   (= "4530161696788274281"
+  (str (__ (* 10000 10000 1000) 1597 3571)))))
 
 ;; 153. Pairwise Disjoint Sets
 

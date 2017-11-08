@@ -1576,26 +1576,26 @@
 ;; - You must visit each edge exactly once.
 ;; - All edges are undirected.
 
-(let [__
-      (fn[coll]
-        (loop [[h & tl] coll
-               degrees {}]
-          (if (nil? h)
-            (do
-              (prn degrees)
-              (every? identity (map (even? (vals degrees)))))
-            (recur tl (update degrees h
-                              (fn[x] (if (nil? x) 1 (inc x))))))))]
-  (= true (__ [[:a :b]])))
+;; (let [__
+;;       (fn[coll]
+;;         (loop [[h & tl] coll
+;;                degrees {}]
+;;           (if (nil? h)
+;;             (do
+;;               (prn degrees)
+;;               (every? identity (map (even? (vals degrees)))))
+;;             (recur tl (update degrees h
+;;                               (fn[x] (if (nil? x) 1 (inc x))))))))]
+;;   (= true (__ [[:a :b]])))
 
 
 
-(let [__
-      (fn rec [f coll]
-        (lazy-seq
-         (when-let [s (seq coll)]
-           (cons (f (first s))
-                 (rec f (rest s))))))]
+;; (let [__
+;;       (fn rec [f coll]
+;;         (lazy-seq
+;;          (when-let [s (seq coll)]
+;;            (cons (f (first s))
+;;                  (rec f (rest s))))))]
 
 
 ;; 90. Cartesian Product
@@ -1622,6 +1622,70 @@
 (let [[eye & more] #{:ace :king :queen :jack}]
   (prn eye)
   (prn more))
+
+
+;; 91. Graph Connectivity
+
+;; Given a graph, determine whether the graph is connected. A connected graph is such that a path exists between any two given nodes.
+
+;; - Your function must return true if the graph is connected and false otherwise.
+;; - You will be given a set of tuples representing the edges of a graph. Each member of a tuple being a vertex/node in the graph.
+;; - Each edge is undirected (can be traversed either direction).
+;; test not run
+
+;; (NOTE: this solution does not work with Clojure 1.4 - the version used
+;; on the site. But it's ok in REPL with Clojure 1.8)
+
+(let [__
+      (fn[tuples]
+        (let [all
+              (into #{} (mapcat identity) tuples)
+
+              neighbors
+              (fn[v]
+                (let [edges
+                      (filter #(or (= v (first %)) (= v (second %))) tuples)
+
+                      normalize
+                      (fn[e] (if (= v (first e)) e
+                                 (into (empty e) (reverse e))))]
+
+                  (->> edges
+                       (map normalize)
+                       (map second)
+                       (into #{}))))
+
+              reachable
+              (fn[v]
+                (loop [res #{v}]
+                  (let [next
+                        (into (empty res)
+                              (clojure.set/union res
+                                                 (mapcat neighbors res)))]
+                    (if (= res next)
+                      next (recur next)))))]
+
+          (every? identity (->> all
+                                (map reachable)
+                                (map #(= all %))))))]
+
+  (and
+   (= true (__ #{[:a :a]}))
+
+   (= true (__ #{[:a :b]}))
+
+   (= false (__ #{[1 2] [2 3] [3 1]
+                  [4 5] [5 6] [6 4]}))
+
+   (= true (__ #{[1 2] [2 3] [3 1]
+                 [4 5] [5 6] [6 4] [3 4]}))
+
+   (= false (__ #{[:a :b] [:b :c] [:c :d]
+                  [:x :y] [:d :a] [:b :e]}))
+
+   (= true (__ #{[:a :b] [:b :c] [:c :d]
+                 [:x :y] [:d :a] [:b :e] [:x :a]}))))
+
 
 
 ;; 92. Read Roman numerals
@@ -2120,6 +2184,58 @@
    (= {:a [1], :b [2]} (__ [:a 1, :b 2]))
    (= {:a [1 2 3], :b [], :c [4]} (__ [:a 1 2 3 :b :c 4]))))
 
+;; 106. Number Maze
+
+;; Given a pair of numbers, the start and end point, find a path
+;; between the two using only three possible operations:
+
+;; double
+;; halve (odd numbers cannot be halved)
+;; add 2
+
+;; Find the shortest path through the "maze". Because there are
+;; multiple shortest paths, you must return the length of the shortest
+;; path, not the path itself.
+
+(let [__
+      (fn[a b]
+        (let [path-length
+              (fn[a b parents]
+                (loop [res 1
+                       x b]
+                  (if (= x a)
+                    res
+                    (recur (inc res) (parents x)))))
+
+              neighbors
+              (fn[n]
+                (remove nil?
+                        [(* n 2) (+ n 2) (if (even? n) (quot n 2))]))]
+
+              (loop [open (conj clojure.lang.PersistentQueue/EMPTY a)
+                     parents {}
+                     closed #{}]
+
+                (if (empty? open)
+                  false
+                  (let
+                      [head (peek open)
+                       open (pop open)]
+                    (if (= b head)
+                      (path-length a b parents)
+                      (let [new (remove closed (neighbors head))]
+                        ;; (prn closed "::" head "->" new)
+                        (recur (into open new)
+                               (into parents (zipmap new (repeat head)))
+                               (apply conj closed new)))))))))]
+
+  (and
+   (= 1 (__ 1 1))
+   (= 3 (__ 3 12))
+   (= 3 (__ 12 3))
+   (= 3 (__ 5 9))
+   (= 9 (__ 9 2))
+   (= 5 (__ 9 12))))
 
 ;; 107. Simple closures
 
@@ -2237,7 +2353,7 @@
                    (empty? r) nil
                    :else      (recur (first r) (rest r) (inc i)))))
 
-          find-obj
+              find-obj
               (fn[obj]
                 (loop [r 0]
                   (let [c (index-of (grid r) obj)]
@@ -2870,6 +2986,37 @@
    (= (__ [0 1 3]) '((0 0) (1 1) (3 2)))
    (= (__ [[:foo] {:bar :baz}]) [[[:foo] 0] [{:bar :baz} 1]])))
 
+;; 158. Decurry
+
+;; Write a function that accepts a curried function of unknown arity
+;; n. Return an equivalent function of n arguments. You may wish to
+;; read this [http://en.wikipedia.org/wiki/Currying].
+
+(let [__
+      (fn[f]
+        (fn[& coll]
+          (reduce (fn[g h] (g h)) f coll)))]
+
+  (and
+   (= 10 ((__ (fn [a]
+                (fn [b]
+                  (fn [c]
+                    (fn [d]
+                      (+ a b c d))))))
+          1 2 3 4))
+
+   (= 24 ((__ (fn [a]
+                (fn [b]
+                  (fn [c]
+                    (fn [d]
+                      (* a b c d))))))
+          1 2 3 4))
+
+   (= 25 ((__ (fn [a]
+                (fn [b]
+                  (* a b))))
+          5 5))))
+
 ;; 161. Subset and Superset
 
 ;; Set A is a subset of set B, or equivalently B is a superset of A,
@@ -2940,18 +3087,36 @@
 ;; integers, start and end, such that all integers between start and
 ;; end (inclusive) are contained in the input sequence.
 
-;; (let [__
-;;       (fn[coll]
-;;         (let [update
-;;               (fn [interval n]
-;;                 (let [a (first interval)
-;;                       lt-a (dec a)
-;;                       b (second interval)
-;;                       gt-b (inc b)
-;;                       rng (range lt-a (inc gt-b))
-;;                       ]
-;;                   (if
+(let [__
+      (fn [coll]
+        (loop [[eye & more :as coll] (sort coll)
+               tmp []
+               res []]
+          (cond
+           (nil? eye)
+           (remove empty? (conj res tmp))
 
+           (empty? tmp)
+           (recur more [eye eye] res)
+
+           (and
+            (<= (first tmp) eye)
+            (<= eye (second tmp)))
+           (recur more tmp res)
+
+           (= eye (inc (last tmp)))
+           (recur more [(first tmp) eye] res)
+
+           :else
+           (recur coll [] (conj res tmp)))))]
+
+  (and
+   (= (__ [1 2 3]) [[1 3]])
+   (= (__ [10 9 8 1 2 3]) [[1 3] [8 10]])
+   (= (__ [1 1 1 1 1 1 1]) [[1 1]])
+   (= (__ []) [])
+   (= (__ [19 4 17 1 3 10 2 13 13 2 16 4 2 15 13 9 6 14 2 11])
+      [[1 4] [6 6] [9 11] [13 17] [19 19]])))
 
 ;; 173. Intro to Destructuring 2
 
@@ -3101,3 +3266,77 @@
    (= :full-house (__ ["HA" "DA" "CA" "HJ" "DJ"]))
    (= :four-of-a-kind (__ ["HA" "DA" "CA" "SA" "DJ"]))
    (= :straight-flush (__ ["HA" "HK" "HQ" "HJ" "HT"]))))
+
+;; 195. Parentheses... Again
+
+;; In a family of languages like Lisp, having balanced parentheses is
+;; a defining feature of the language. Luckily, Lisp has almost no
+;; syntax, except for these "delimiters" -- and that hardly qualifies
+;; as "syntax", at least in any useful computer programming sense.
+
+;; It is not a difficult exercise to find all the combinations of
+;; well-formed parentheses if we only have N pairs to work with. For
+;; instance, if we only have 2 pairs, we only have two possible
+;; combinations: "()()" and "(())". Any other combination of length 4
+;; is ill-formed. Can you see why?
+
+;; Generate all possible combinations of well-formed parentheses of
+;; length 2n (n pairs of parentheses). For this problem, we only
+;; consider '(' and ')', but the answer is similar if you work with
+;; only {} or only [].
+
+;; There is an interesting pattern in the numbers!
+
+(let [__
+      (fn[n]
+
+        (let [n' (inc n)
+              orig (concat (range 1 n')
+                           (map #(- %) (range 1 n')))
+
+              lst->str
+              (fn [lst]
+                (let [tmp (map #(if (< 0 %) \( \)) lst)]
+                (apply str (interpose "" tmp))))
+
+              permutations
+              (fn [s]
+                (let [aux
+                      (memoize
+                       (fn [rec a-set]
+                         (cond (empty? a-set) '(())
+                               (empty? (rest a-set)) (list (apply list a-set))
+                               :else (for [x a-set y (rec rec (remove #{x} a-set))]
+                                       (cons x y)))))
+
+                      aux (partial aux aux)]
+                  (aux s)))
+
+              legal?
+              (fn [s]
+                (loop [[eye & more :as in] (remove zero? s)
+                       stack []]
+                  (let [head (or (peek stack) 0)]
+                    (cond
+                     (nil? eye)
+                     (zero? head)
+
+                     (>= eye 0)
+                     (recur more (conj stack eye))
+
+                     (zero? (+ eye head))
+                     (recur more (pop stack))
+
+                     :else
+                     false))))]
+
+          (set (map lst->str
+                    (filter legal? (permutations orig))))))]
+
+  (and
+   (= [#{""} #{"()"} #{"()()" "(())"}] (map (fn [n] (__ n)) [0 1 2]))
+   (= #{"((()))" "()()()" "()(())" "(())()" "(()())"} (__ 3))
+   (= 16796 (count (__ 10)))
+   (= (nth (sort (filter #(.contains ^String % "(()()()())") (__ 9))) 6) "(((()()()())(())))")
+   (= (nth (sort (__ 12)) 5000) "(((((()()()()()))))(()))")
+))

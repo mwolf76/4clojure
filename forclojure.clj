@@ -1633,12 +1633,11 @@
 ;; - Each edge is undirected (can be traversed either direction).
 ;; test not run
 
-;; (NOTE: this solution does not work with Clojure 1.4 - the version used
-;; on the site. But it's ok in REPL with Clojure 1.8)
-
+;; Note: this solution does not work with Clojure 1.4 - the version
+;; used on the site. But it's ok in my REPL with Clojure 1.8)
 (let [__
       (fn[tuples]
-        (let [all
+        (let [vertexes
               (into #{} (mapcat identity) tuples)
 
               neighbors
@@ -1646,12 +1645,12 @@
                 (let [edges
                       (filter #(or (= v (first %)) (= v (second %))) tuples)
 
-                      normalize
-                      (fn[e] (if (= v (first e)) e
-                                 (into (empty e) (reverse e))))]
+                      outgoing
+                      (fn[e] (if (= v (first e))
+                               e (into (empty e) (reverse e))))]
 
                   (->> edges
-                       (map normalize)
+                       (map outgoing)
                        (map second)
                        (into #{}))))
 
@@ -1663,11 +1662,11 @@
                               (clojure.set/union res
                                                  (mapcat neighbors res)))]
                     (if (= res next)
-                      next (recur next)))))]
+                      res (recur next)))))]
 
-          (every? identity (->> all
+          (every? identity (->> vertexes
                                 (map reachable)
-                                (map #(= all %))))))]
+                                (map #(= vertexes %))))))]
 
   (and
    (= true (__ #{[:a :a]}))
@@ -2261,6 +2260,138 @@
    (= 256 ((__ 2) 16),((__ 8) 2))
    (= [1 8 27 64] (map (__ 3) [1 2 3 4]))
    (= [1 2 4 8 16] (map #((__ %) 2) [0 1 2 3 4]))))
+
+;; 111. Crossword puzzle
+
+;; Write a function that takes a string and a partially-filled
+;; crossword puzzle board, and determines if the input string can be
+;; legally placed onto the board.
+
+;; The crossword puzzle board consists of a collection of partially-filled rows. Empty spaces are denoted with an underscore (_), unusable spaces are denoted with a hash symbol (#), and pre-filled spaces have a character in place; the whitespace characters are for legibility and should be ignored.
+
+;; For a word to be legally placed on the board:
+;; - It may use empty spaces (underscores)
+;; - It may use but must not conflict with any pre-filled characters.
+;; - It must not use any unusable spaces (hashes).
+;; - There must be no empty spaces (underscores) or extra characters before or after the word (the word may be bound by unusable spaces though).
+;; - Characters are not case-sensitive.
+;; - Words may be placed vertically (proceeding top-down only), or horizontally (proceeding left-right only).
+(let [__
+      (fn[word split-rows]
+        (let [parse-row
+              (fn[s]
+                clojure.string/join ""
+                (clojure.string/split s #" "))
+
+              rows
+              (into [] (map parse-row split-rows))
+
+              no-rows
+              (count rows)
+
+              no-cols
+              (count (rows 0))
+
+              char-eq
+              (fn [a b]
+                (= (str a)
+                   (str b)))
+
+              ;; cell accessor
+              cell
+              (fn [r c]
+                (let [row (get rows r nil)]
+                  (if row
+                    (get row c))))
+
+              ;; match when either is _ or they're the same
+              match-letter
+              (fn [a b]
+                (or (char-eq a \_)
+                    (char-eq b \_)
+                    (char-eq a b)))
+
+              ;; brick matcher
+              match-brick
+              (fn [c]
+                (char-eq c \#))
+
+              ;; cell matcher
+              match-cell
+              (fn [r c ch]
+                (match-letter (cell r c) ch))
+
+              ;; boundary matcher
+              match-boundary
+              (fn [r c]
+                (or
+                 (> 0 r)
+                 (> 0 c)
+                 (>= r no-rows)
+                 (>= c no-cols)
+                 (match-brick (cell r c))))
+
+              ;; word matcher
+              match-word
+              (fn [r c o]
+                (let [word-constraint
+                      (cond
+
+                       (= :vert o)
+                       (every? identity (for [i (range (count word))]
+                                          (match-cell (+ i r) c (get word i "#"))))
+
+                       :else
+                       (every? identity (for [i (range (count word))]
+                                          (match-cell r (+ i c) (get word i "#")))))
+
+                      boundary-constraint
+                      (cond
+
+                       (= :vert o)
+                       (and
+                        (match-boundary (- r 1) c)
+                        (match-boundary (+ r (count word)) c))
+
+                       :else
+                       (and
+                        (match-boundary r (- c 1))
+                        (match-boundary r (+ c (count word)))))
+
+                       ret
+                       (and word-constraint
+                           boundary-constraint)]
+
+                  ;; (prn r c o " --> " word-constraint boundary-constraint ret)
+                  ret))
+
+              checkers
+              (for [r (vec (range no-rows))
+                    c (vec (range no-cols))
+                    o [:vert :horiz]]
+                (match-word r c o))]
+
+          (or (some identity checkers) false)))]
+
+  (and
+
+   (= true  (__ "the" ["_ # _ _ e"]))
+
+   (= false (__ "the" ["c _ _ _"
+                       "d _ # e"
+                       "r y _ _"]))
+
+   (= true  (__ "joy" ["c _ _ _"
+                       "d _ # e"
+                       "r y _ _"]))
+
+   (= false (__ "joy" ["c o n j"
+                       "_ _ y _"
+                       "r _ _ #"]))
+
+   (= true  (__ "clojure" ["_ _ _ # j o y"
+                        "_ _ o _ _ _ _"
+                        "_ _ f _ # _ _"]))))
 
 ;; 115. The Balance of N
 

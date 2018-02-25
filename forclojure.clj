@@ -3010,6 +3010,90 @@
    (= "4530161696788274281"
   (str (__ (* 10000 10000 1000) 1597 3571)))))
 
+;; 150. Palindromic Numbers
+
+;; A palindromic number is a number that is the same when written
+;; forwards or backwards (e.g., 3, 99, 14341).
+
+;; Write a function which takes an integer n, as its only argument,
+;; and returns an increasing lazy sequence of all palindromic numbers
+;; that are not less than n.
+
+;; The most simple solution will exceed the time limit!
+(let [__
+      (fn[n]
+        (letfn [(palindrome?[s]
+                  (if (< (count s) 2) true
+                      (and (= (first s) (last s)) (recur (drop 1 (drop-last 1 s))))))
+
+                (first-palindrome-greater-or-equal-than
+                  [n] (first (filter #(palindrome? (str %)) (iterate inc n))))
+
+                (palindrome-seed
+                  [n] (let [repr (str n)
+                            length (count repr)
+                            stub-length (int  (Math/ceil (/ (count repr) 2)))]
+                        (biginteger (subs repr 0 stub-length))))
+
+                (pow10 [n] (reduce *' (repeat n 10)))
+
+                (log10 [n] (first (filter #(> (pow10 %) n) (range))))
+
+                (mirror-symmetric [k]
+                  (let [lhs (str k)
+                        rhs (clojure.string/reverse lhs)]
+                    (biginteger (str lhs rhs))))
+
+                (mirror-asymmetric [k]
+                  (let [lhs (str k)
+                        rhs (subs (clojure.string/reverse lhs) 1)]
+                    (biginteger (str lhs rhs))))
+
+                (all-palindromes-aux[toggle i seed]
+                  (cons
+                   (if toggle
+                     (mirror-symmetric seed)
+                     (mirror-asymmetric seed))
+                   (lazy-seq
+                    (let [limit (pow10 i)
+                          next-seed (inc seed)]
+                      (cond
+                       (and (= next-seed limit) (not toggle))
+                       (all-palindromes-aux true i (pow10 (dec i)))
+
+                       (and (= next-seed limit) toggle)
+                       (all-palindromes-aux false (inc i) (pow10 i))
+
+                       :else
+                       (all-palindromes-aux toggle i (inc seed)))))))]
+
+          (let [first (first-palindrome-greater-or-equal-than n)
+                seed (palindrome-seed first)
+                test (mirror-symmetric seed)]
+
+            (all-palindromes-aux (= test first)  (log10 seed) seed))))]
+
+  (and
+   (= (take 26 (__ 0))
+      [0 1 2 3 4 5 6 7 8 9 11 22 33 44 55 66 77 88 99 101 111 121 131 141 151 161])
+
+   (= (take 16 (__ 162))
+      [171 181 191 202 212 222 232 242 252 262 272 282 292 303 313 323])
+
+   (= (take 6 (__ 1234550000))
+      [1234554321 1234664321 1234774321 1234884321 1234994321 1235005321])
+
+   (= (first (__ (* 111111111 111111111)))
+      (* 111111111 111111111))
+
+   (= (set (take 199 (__ 0)))
+      (set (map #(first (__ %)) (range 0 10000))))
+
+   (= true
+      (apply < (take 6666 (__ 9999999))))
+
+   (= (nth (__ 0) 10101) 9102019)))
+
 ;; 153. Pairwise Disjoint Sets
 
 ;; Given a set of sets, create a function which returns true if no two
@@ -3417,57 +3501,33 @@
 ;; only {} or only [].
 
 ;; There is an interesting pattern in the numbers!
-
 (let [__
       (fn[n]
+        (let [generate
+              (fn[n]
+                (loop [i n res #{""}]
+                  (let [extend
+                        (fn[radix]
+                          (let [freqs (frequencies radix)
+                                open (get freqs \( 0)
+                                close (get freqs \) 0)
 
-        (let [n' (inc n)
-              orig (concat (range 1 n')
-                           (map #(- %) (range 1 n')))
+                                can-open (> i (- open close))
+                                can-close (> open close)]
 
-              lst->str
-              (fn [lst]
-                (let [tmp (map #(if (< 0 %) \( \)) lst)]
-                (apply str (interpose "" tmp))))
+                            (clojure.set/union
+                             (if can-open #{(str radix \()})
+                             (if can-close #{(str radix \))}))))]
 
-              permutations
-              (fn [s]
-                (let [aux
-                      (memoize
-                       (fn [rec a-set]
-                         (cond (empty? a-set) '(())
-                               (empty? (rest a-set)) (list (apply list a-set))
-                               :else (for [x a-set y (rec rec (remove #{x} a-set))]
-                                       (cons x y)))))
-
-                      aux (partial aux aux)]
-                  (aux s)))
-
-              legal?
-              (fn [s]
-                (loop [[eye & more :as in] (remove zero? s)
-                       stack []]
-                  (let [head (or (peek stack) 0)]
                     (cond
-                     (nil? eye)
-                     (zero? head)
+                     (zero? i) res
+                     :else (recur (dec i) (mapcat extend res))))))]
 
-                     (>= eye 0)
-                     (recur more (conj stack eye))
-
-                     (zero? (+ eye head))
-                     (recur more (pop stack))
-
-                     :else
-                     false))))]
-
-          (set (map lst->str
-                    (filter legal? (permutations orig))))))]
+          (into #{} (generate (* 2 n)))))]
 
   (and
    (= [#{""} #{"()"} #{"()()" "(())"}] (map (fn [n] (__ n)) [0 1 2]))
    (= #{"((()))" "()()()" "()(())" "(())()" "(()())"} (__ 3))
    (= 16796 (count (__ 10)))
    (= (nth (sort (filter #(.contains ^String % "(()()()())") (__ 9))) 6) "(((()()()())(())))")
-   (= (nth (sort (__ 12)) 5000) "(((((()()()()()))))(()))")
-))
+   (= (nth (sort (__ 12)) 5000) "(((((()()()()()))))(()))")))

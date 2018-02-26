@@ -2261,6 +2261,47 @@
    (= [1 8 27 64] (map (__ 3) [1 2 3 4]))
    (= [1 2 4 8 16] (map #((__ %) 2) [0 1 2 3 4]))))
 
+;; 108. Lazy Searching
+
+;; Given any number of sequences, each sorted from smallest to
+;; largest, find the smallest single number which appears in all of
+;; the sequences. The sequences may be infinite, so be careful to
+;; search lazily.
+
+(let [__
+      (fn [& colls]
+        (if (some empty? colls) nil
+            (let [heads
+                  (into [] (map first colls))]
+
+              (if (apply = heads)
+                (first heads)
+                (let [pivot
+                      (apply min heads)
+
+                      trim
+                      (fn [coll]
+                             (if (= pivot (first coll))
+                               (rest coll)  coll))]
+
+                  (recur (map trim colls)))))))]
+
+  (and
+   (= nil (__ []))
+
+   (= nil (__ [0] [1] ))
+
+   (= 3 (__ [3 4 5]))
+
+   (= 4 (__ [1 2 3 4 5 6 7] [0.5 3/2 4 19]))
+
+   (= 7 (__ (range) (range 0 100 7/6) [2 3 5 7 11 13]))
+
+   (= 64 (__ (map #(* % % %) (range)) ;; perfect cubes
+          (filter #(zero? (bit-and % (dec %))) (range)) ;; powers of 2
+          (iterate inc 20))) ;; at least as large as 20
+   ))
+
 ;; 111. Crossword puzzle
 
 ;; Write a function that takes a string and a partially-filled
@@ -2276,6 +2317,7 @@
 ;; - There must be no empty spaces (underscores) or extra characters before or after the word (the word may be bound by unusable spaces though).
 ;; - Characters are not case-sensitive.
 ;; - Words may be placed vertically (proceeding top-down only), or horizontally (proceeding left-right only).
+
 (let [__
       (fn[word split-rows]
         (let [parse-row

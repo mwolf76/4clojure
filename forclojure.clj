@@ -363,7 +363,6 @@
 
 ;; 34. Implement range
 
-
 ;; Write a function which creates a list of all integers in a given
 ;; range.
 (let [__ (fn [from to]
@@ -2302,6 +2301,48 @@
           (iterate inc 20))) ;; at least as large as 20
    ))
 
+;; 110. Sequence of pronunciations
+
+;; Write a function that returns a lazy sequence of "pronunciations"
+;; of a sequence of numbers. A pronunciation of each element in the
+;; sequence consists of the number of repeating identical numbers and
+;; the number itself. For example, [1 1] is pronounced as [2 1] ("two
+;; ones"), which in turn is pronounced as [1 2 1 1] ("one two, one
+;; one").
+
+;; Your function should accept an initial sequence of numbers, and
+;; return an infinite lazy sequence of pronunciations, each element
+;; being a pronunciation of the previous element.
+
+(let [__
+      (fn [sq]
+        (let [pronunciation
+              (fn[sq]
+                (let [aux
+                      (fn[res eye cnt [hd & more]]
+                        (prn res eye cnt (cons hd more))
+                        (cond
+                         (nil? hd)
+                         (conj res cnt eye)
+
+                         (nil? eye)
+                         (recur res hd 1 more)
+
+                         (= eye hd)
+                         (recur res hd (inc cnt) more)
+
+                         :otherwise
+                         (recur (conj res cnt eye) hd 1 more)))]
+
+                  (aux [] nil 0 sq)))]
+          (rest (iterate pronunciation sq))))]
+
+  (and
+   (= [[1 1] [2 1] [1 2 1 1]] (take 3 (__ [1])))
+   (= [3 1 2 4] (first (__ [1 1 1 4 4])))
+   (= [1 1 1 3 2 1 3 2 1 1] (nth (__ [1]) 6))
+   (= 338 (count (nth (__ [3 2]) 15)))))
+
 ;; 111. Crossword puzzle
 
 ;; Write a function that takes a string and a partially-filled
@@ -2434,6 +2475,47 @@
    (= true  (__ "clojure" ["_ _ _ # j o y"
                         "_ _ o _ _ _ _"
                         "_ _ f _ # _ _"]))))
+
+;; 114. Global take-while
+
+;; take-while is great for filtering sequences, but it limited: you
+;; can only examine a single item of the sequence at a time. What if
+;; you need to keep track of some state as you go over the sequence?
+
+;; Write a function which accepts an integer n, a predicate p, and a
+;; sequence. It should return a lazy sequence of items in the list up
+;; to, but not including, the nth item that satisfies the predicate.
+
+(let [__
+      (fn [n p sq]
+        (let [aux
+              (fn [res n p [hd & more]]
+                (cond
+                 (nil? hd)
+                 res
+
+                  (p hd)
+                  (let [xn (dec n)]
+                    (if (zero? xn) res
+                        (recur (conj res hd) xn p more)))
+
+                  :otherwise
+                  (recur (conj res hd) n p more)))]
+
+          (aux [] n p sq)))]
+
+  (and
+   (= [2 3 5 7 11 13]
+      (__ 4 #(= 2 (mod % 3))
+         [2 3 5 7 11 13 17 19 23])))
+
+  (= ["this" "is" "a" "sentence"]
+   (__ 3 #(some #{\i} %)
+         ["this" "is" "a" "sentence" "i" "wrote"]))
+
+  (= ["this" "is"]
+   (__ 1 #{"a"}
+         ["this" "is" "a" "sentence" "i" "wrote"])))
 
 ;; 115. The Balance of N
 

@@ -560,7 +560,7 @@
 (= '(1 4 7 10 13)
    (take 5 (iterate #(+ 3 %) 1)))
 
-                                        ; 46. Flipping out
+;; 46. Flipping out
 
 ;; Write a higher-order function which flips the order of the
 ;; arguments of an input function.
@@ -1575,27 +1575,66 @@
 ;; - You must visit each edge exactly once.
 ;; - All edges are undirected.
 
-;; (let [__
-;;       (fn[coll]
-;;         (loop [[h & tl] coll
-;;                degrees {}]
-;;           (if (nil? h)
-;;             (do
-;;               (prn degrees)
-;;               (every? identity (map (even? (vals degrees)))))
-;;             (recur tl (update degrees h
-;;                               (fn[x] (if (nil? x) 1 (inc x))))))))]
-;;   (= true (__ [[:a :b]])))
+(let [__
+      (fn [tuples]
+        (let [connected?
+              (fn[tuples]
+                (let [vertexes
+                      (into #{} (mapcat identity tuples))
 
+                      neighbors
+                      (fn[v]
+                        (let [edges
+                              (filter
+                               #(or
+                                 (= v (first %))
+                                 (= v (second %))) tuples)
 
+                              outgoing
+                              (fn[e]
+                                (if (= v (first e))
+                                  e
+                                  (into (empty e) (reverse e))))]
 
-;; (let [__
-;;       (fn rec [f coll]
-;;         (lazy-seq
-;;          (when-let [s (seq coll)]
-;;            (cons (f (first s))
-;;                  (rec f (rest s))))))]
+                          (into #{}
+                                (map second
+                                     (map outgoing edges)))))
 
+                      reachable
+                      (fn[v]
+                        (loop [res #{v}]
+                          (let [next
+                                (into (empty res)
+                                      (clojure.set/union res
+                                                         (mapcat neighbors res)))]
+                            (if (= res next)
+                              res
+                              (recur next)))))]
+
+                  (every? identity
+                          (map #(= vertexes %)
+                               (map reachable vertexes)))))]
+
+          (and
+               (connected? tuples)
+
+               ;; Euler's theorem
+               (let [ranks
+                     (map second
+                          (frequencies
+                           (mapcat identity tuples)))]
+
+                 (or
+                  (every? even? ranks)
+                  (= 2 (count (map odd? ranks))))))))]
+
+  (and
+   (= true (__ [[:a :b]]))
+   (= false (__ [[:a :a] [:b :b]]))
+   (= false (__ [[:a :b] [:a :b] [:a :c] [:c :a] [:a :d] [:b :d] [:c :d]]))
+   (= true (__ [[1 2] [2 3] [3 4] [4 1]]))
+   (= true (__ [[:a :b] [:a :c] [:c :b] [:a :e] [:b :e] [:a :d] [:b :d] [:c :e] [:d :e] [:c :f] [:d :f]]))
+   (= false (__ [[1 2] [2 3] [2 4] [2 5]]))))
 
 ;; 90. Cartesian Product
 
@@ -1625,19 +1664,23 @@
 
 ;; 91. Graph Connectivity
 
-;; Given a graph, determine whether the graph is connected. A connected graph is such that a path exists between any two given nodes.
-
-;; - Your function must return true if the graph is connected and false otherwise.
-;; - You will be given a set of tuples representing the edges of a graph. Each member of a tuple being a vertex/node in the graph.
+;; Given a graph, determine whether the graph is connected. A
+;; connected graph is such that a path exists between any two given
+;; nodes.
+;;
+;; - Your function must return true if the graph is connected and
+;; false otherwise.
+;;
+;; - You will be given a set of tuples representing the edges of a
+;; graph. Each member of a tuple being a vertex/node in the graph.
+;;
 ;; - Each edge is undirected (can be traversed either direction).
 ;; test not run
 
-;; Note: this solution does not work with Clojure 1.4 - the version
-;; used on the site. But it's ok in my REPL with Clojure 1.8)
 (let [__
       (fn[tuples]
         (let [vertexes
-              (into #{} (mapcat identity) tuples)
+              (into #{} (mapcat identity tuples))
 
               neighbors
               (fn[v]
@@ -1683,8 +1726,6 @@
 
    (= true (__ #{[:a :b] [:b :c] [:c :d]
                  [:x :y] [:d :a] [:b :e] [:x :a]}))))
-
-
 
 ;; 92. Read Roman numerals
 
@@ -2850,6 +2891,72 @@
                    '[S2 S3 S4 S5 S6 S7
                      S8 S9 ST SJ SQ SK SA]))))
 
+;; 132. Insert between two items
+
+;; Write a function that takes a two-argument predicate, a value, and
+;; a collection; and returns a new collection where the value is
+;; inserted between every two items that satisfy the predicate.
+
+(defn __ [pred? val [hd & tail]]
+  (let [accept
+        (fn [res eye elem]
+          (if (pred? eye elem)
+            (conj res eye val)
+            (conj res eye)))
+
+        aux
+        (fn [res eye coll]
+          (cond
+           (empty? coll)
+           (if eye
+             (conj res eye))
+
+           :otherwise
+           (let [hd (first coll)
+                 tail (rest coll)]
+             (recur (accept res eye hd) hd tail))))]
+
+    (aux [] hd tail)))
+
+(and
+ (= '(1 :less 6 :less 7 4 3) (__ < :less [1 6 7 4 3]))
+ (= '(2) (__ > :more [2]))
+(= [0 1 :x 2 :x 3 :x 4]  (__ #(and (pos? %) (< % %2)) :x (range 5)))
+(empty? (__ > :more ()))
+
+)
+(= '(1 :less 6 :less 7 4 3) (__ < :less [1 6 7 4 3]))
+
+(= [0 1 :same 1 2 3 :same 5 8 13 :same 21]
+   (take 12 (->> [0 1]
+                 (iterate (fn [[a b]] [b (+' a b)]))
+                 (map first) ; fibonacci numbers
+                 (__ (fn [a b] ; both even or both odd
+                       (= (mod a 2) (mod b 2)))
+                     :same))))
+
+(__ < :less [1 6 7 4 3])
+(+ 1 2)
+
+
+(= [0 1 :same 1 2 3 :same 5 8 13 :same 21]
+   (take 12 (->> [0 1]
+                 (iterate (fn [[a b]] [b (+ a b)]))
+                 (map first) ; fibonacci numbers
+                 (__ (fn [a b] ; both even or both odd
+                       (= (mod a 2) (mod b 2)))
+                     :same))))
+
+
+
+
+
+
+
+
+
+
+
 ;; 134. A nil key
 
 ;; Write a function which, given a key and map, returns true iff the
@@ -3655,3 +3762,58 @@
    (= 16796 (count (__ 10)))
    (= (nth (sort (filter #(.contains ^String % "(()()()())") (__ 9))) 6) "(((()()()())(())))")
    (= (nth (sort (__ 12)) 5000) "(((((()()()()()))))(()))")))
+
+;; Hamiltonian cycle (TSP)
+(let [
+      __
+      (fn [edges]
+        (letfn [(gen-perms [vertexes]
+                  (cond
+                   (empty? vertexes)
+                   '(()) (empty? (rest vertexes)) (list (apply list vertexes))
+
+                   :else
+                   (for [x vertexes y (gen-perms (remove #{x} vertexes))] (cons x y))))]
+
+          (let [mirror
+                (fn[[a b]] [b a])
+
+                all-edges
+                (into #{} (clojure.set/union edges (map mirror edges)))
+
+                vertexes
+                (into [] (distinct (mapcat identity edges)))
+
+                perms
+                (gen-perms vertexes)
+
+                make-cycle
+                (fn [lst]
+                  (let [v (into [] lst)]
+                    (conj v (first v))))
+
+                cycles
+                (map make-cycle perms)
+
+                is-valid-cycle?
+                (fn [cycle]
+                  ;; (prn cycle)
+                  (let [rcycle (reverse cycle)
+                        j (cons nil (into '() rcycle))
+                        k (into '() rcycle)
+                        steps (into [] (rest (map vector j k)))]
+                    ;; (prn steps)
+                    (if (every? all-edges steps) cycle)))]
+
+            ;; (prn all-edges)
+            (let [solution (some is-valid-cycle? cycles)]
+              (prn solution)
+              (if solution true false)))))]
+
+  (and
+   (= true (__ [[:a :b]]))
+   (= false (__ [[:a :a] [:b :b]]))
+   (= true (__ [[:a :b] [:a :b] [:a :c] [:c :a] [:a :d] [:b :d] [:c :d]]))
+   (= true (__ [[1 2] [2 3] [3 4] [4 1]]))
+   (= true (__ [[:a :b] [:a :c] [:c :b] [:a :e] [:b :e] [:a :d] [:b :d] [:c :e] [:d :e] [:c :f] [:d :f]]))
+   (= false (__ [[1 2] [2 3] [2 4] [2 5]]))))

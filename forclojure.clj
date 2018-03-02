@@ -1477,6 +1477,40 @@
    (= false (__ true true true))
    (= true (__ true true true false))))
 
+;; 84. Transitive Closure
+
+;; Write a function which generates the transitive closure of a binary
+;; relation. The relation will be represented as a set of 2 item
+;; vectors.
+
+(let [__
+      (fn[in]
+        (loop [tuples in]
+          (let [res
+                (clojure.set/union tuples
+                                   (into #{} (for [a tuples b tuples
+                                                   :when (= (second a) (first b))]
+                                               [(first a) (second b)])))]
+            (if (= res tuples)
+              res
+              (recur res)))))]
+
+  (and
+   (let [divides #{[8 4] [9 3] [4 2] [27 9]}]
+     (= (__ divides) #{[4 2] [8 4] [8 2] [9 3] [27 9] [27 3]})))
+
+  (let [more-legs
+        #{["cat" "man"] ["man" "snake"] ["spider" "cat"]}]
+    (= (__ more-legs)
+       #{["cat" "man"] ["cat" "snake"] ["man" "snake"]
+         ["spider" "cat"] ["spider" "man"] ["spider" "snake"]}))
+
+  (let [progeny
+        #{["father" "son"] ["uncle" "cousin"] ["son" "grandson"]}]
+    (= (__ progeny)
+       #{["father" "son"] ["father" "grandson"]
+         ["uncle" "cousin"] ["son" "grandson"]})))
+
 ;; 85. Power Set
 
 ;; Write a function which generates the power set of a given set. The
@@ -1675,7 +1709,6 @@
 ;; graph. Each member of a tuple being a vertex/node in the graph.
 ;;
 ;; - Each edge is undirected (can be traversed either direction).
-;; test not run
 
 (let [__
       (fn[tuples]
@@ -1775,6 +1808,29 @@
    (= 827 (__ "DCCCXXVII"))
    (= 3999 (__ "MMMCMXCIX"))
    (= 48 (__ "XLVIII"))))
+
+;; 93. Partial Flatten a Sequence
+
+;; Write a function which flattens any nested combination of
+;; sequential things (lists, vectors, etc.), but maintains the lowest
+;; level sequential items. The result should be a sequence of
+;; sequences with only one level of nesting.
+(let [__
+      (fn[x]
+        (filter
+         #(and (sequential? %)
+               (not (sequential? (first %))))
+         (tree-seq sequential? seq x)))]
+
+  (and
+   (= (__ [["Do"] ["Nothing"]])
+      [["Do"] ["Nothing"]]))
+
+  (= (__ [[[[:a :b]]] [[:c :d]] [:e :f]])
+     [[:a :b] [:c :d] [:e :f]])
+
+  (= (__ '((1 2)((3 4)((((5 6)))))))
+     '((1 2)(3 4)(5 6))))
 
 ;; 94. The Game of Life
 
@@ -2390,15 +2446,22 @@
 ;; crossword puzzle board, and determines if the input string can be
 ;; legally placed onto the board.
 
-;; The crossword puzzle board consists of a collection of partially-filled rows. Empty spaces are denoted with an underscore (_), unusable spaces are denoted with a hash symbol (#), and pre-filled spaces have a character in place; the whitespace characters are for legibility and should be ignored.
+;; The crossword puzzle board consists of a collection of
+;; partially-filled rows. Empty spaces are denoted with an underscore
+;; (_), unusable spaces are denoted with a hash symbol (#), and
+;; pre-filled spaces have a character in place; the whitespace
+;; characters are for legibility and should be ignored.
 
 ;; For a word to be legally placed on the board:
 ;; - It may use empty spaces (underscores)
 ;; - It may use but must not conflict with any pre-filled characters.
 ;; - It must not use any unusable spaces (hashes).
-;; - There must be no empty spaces (underscores) or extra characters before or after the word (the word may be bound by unusable spaces though).
+;; - There must be no empty spaces (underscores) or extra characters
+;; - before or after the word (the word may be bound by unusable
+;; - spaces though).
 ;; - Characters are not case-sensitive.
-;; - Words may be placed vertically (proceeding top-down only), or horizontally (proceeding left-right only).
+;; - Words may be placed vertically (proceeding top-down only), or
+;; - horizontally (proceeding left-right only).
 
 (let [__
       (fn[word split-rows]
@@ -2482,8 +2545,8 @@
                         (match-boundary r (- c 1))
                         (match-boundary r (+ c (count word)))))
 
-                       ret
-                       (and word-constraint
+                      ret
+                      (and word-constraint
                            boundary-constraint)]
 
                   ;; (prn r c o " --> " word-constraint boundary-constraint ret)
@@ -2514,8 +2577,8 @@
                        "r _ _ #"]))
 
    (= true  (__ "clojure" ["_ _ _ # j o y"
-                        "_ _ o _ _ _ _"
-                        "_ _ f _ # _ _"]))))
+                           "_ _ o _ _ _ _"
+                           "_ _ f _ # _ _"]))))
 
 ;; 114. Global take-while
 
@@ -2896,66 +2959,6 @@
 ;; Write a function that takes a two-argument predicate, a value, and
 ;; a collection; and returns a new collection where the value is
 ;; inserted between every two items that satisfy the predicate.
-
-(defn __ [pred? val [hd & tail]]
-  (let [accept
-        (fn [res eye elem]
-          (if (pred? eye elem)
-            (conj res eye val)
-            (conj res eye)))
-
-        aux
-        (fn [res eye coll]
-          (cond
-           (empty? coll)
-           (if eye
-             (conj res eye))
-
-           :otherwise
-           (let [hd (first coll)
-                 tail (rest coll)]
-             (recur (accept res eye hd) hd tail))))]
-
-    (aux [] hd tail)))
-
-(and
- (= '(1 :less 6 :less 7 4 3) (__ < :less [1 6 7 4 3]))
- (= '(2) (__ > :more [2]))
-(= [0 1 :x 2 :x 3 :x 4]  (__ #(and (pos? %) (< % %2)) :x (range 5)))
-(empty? (__ > :more ()))
-
-)
-(= '(1 :less 6 :less 7 4 3) (__ < :less [1 6 7 4 3]))
-
-(= [0 1 :same 1 2 3 :same 5 8 13 :same 21]
-   (take 12 (->> [0 1]
-                 (iterate (fn [[a b]] [b (+' a b)]))
-                 (map first) ; fibonacci numbers
-                 (__ (fn [a b] ; both even or both odd
-                       (= (mod a 2) (mod b 2)))
-                     :same))))
-
-(__ < :less [1 6 7 4 3])
-(+ 1 2)
-
-
-(= [0 1 :same 1 2 3 :same 5 8 13 :same 21]
-   (take 12 (->> [0 1]
-                 (iterate (fn [[a b]] [b (+ a b)]))
-                 (map first) ; fibonacci numbers
-                 (__ (fn [a b] ; both even or both odd
-                       (= (mod a 2) (mod b 2)))
-                     :same))))
-
-
-
-
-
-
-
-
-
-
 
 ;; 134. A nil key
 

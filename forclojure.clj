@@ -2218,6 +2218,34 @@
    (= (__ "multi-word-key") "multiWordKey")
    (= (__ "leaveMeAlone") "leaveMeAlone")))
 
+;; 103. Generating k-combinations
+
+;; Given a sequence S consisting of n elements generate all
+;; k-combinations of S, i. e. generate all possible sets consisting of
+;; k distinct elements taken from S. The number of k-combinations for
+;; a sequence is equal to the binomial coefficient.
+
+(let [__
+      (fn [k set]
+        (let [coll (into [] set)]
+          (letfn [(comb-aux [k start]
+                    (if (= 1 k)
+                      (for [x (range start (count coll))]
+                        (conj #{} (set (nth coll x))))
+                      (for [x (range start (count coll))
+                            xs (comb-aux (dec k) (inc x))]
+                        (into #{} (conj xs (nth coll x))))))]
+            (into #{} (comb-aux k 0)))))]
+  (and
+   (= (__ 1 #{4 5 6}) #{#{4} #{5} #{6}})
+   (= (__ 10 #{4 5 6}) #{})
+   (= (__ 2 #{0 1 2}) #{#{0 1} #{0 2} #{1 2}})
+   (= (__ 3 #{0 1 2 3 4}) #{#{0 1 2} #{0 1 3} #{0 1 4} #{0 2 3} #{0 2 4}
+                            #{0 3 4} #{1 2 3} #{1 2 4} #{1 3 4} #{2 3 4}})
+   (= (__ 4 #{[1 2 3] :a "abc" "efg"}) #{#{[1 2 3] :a "abc" "efg"}})
+   (= (__ 2 #{[1 2 3] :a "abc" "efg"}) #{#{[1 2 3] :a} #{[1 2 3] "abc"} #{[1 2 3] "efg"}
+                                         #{:a "abc"} #{:a "efg"} #{"abc" "efg"}})))
+
 ;; 104. Write Roman Numerals
 
 ;; This is the inverse of Problem 92, but much easier. Given an
@@ -2954,11 +2982,169 @@
                    '[S2 S3 S4 S5 S6 S7
                      S8 S9 ST SJ SQ SK SA]))))
 
+;; 131. Sum Some Set Subsets
+
+;; Given a variable number of sets of integers, create a function
+;; which returns true iff all of the sets have a non-empty subset with
+;; an equivalent summation.
+
+(let [__
+      (fn [& sets]
+        (letfn
+            [(powerset [lst]
+               (if (empty? lst)
+                 '([])
+                 (let [ps (powerset (next lst))]
+                   (clojure.set/union ps (map #(conj % (first lst)) ps)))))
+
+             (sums [coll]
+               (vec (sort (distinct (map (partial reduce +) (remove empty? (powerset coll)))))))
+
+             (common-elem [& colls]
+               (if (some empty? colls) nil
+                   (let [heads
+                         (into [] (map first colls))]
+
+                     (if (apply = heads)
+                       (first heads)
+                       (let [pivot
+                             (apply min heads)
+
+                             trim
+                             (fn [coll]
+                               (if (= pivot (first coll))
+                                 (rest coll)  coll))]
+
+                         (recur (map trim colls)))))))]
+          (not
+           (nil?
+            (apply common-elem (map sums sets))))))]
+
+  (and
+   (= true
+      (__
+       #{-1 1 99}
+       #{-2 2 888}
+       #{-3 3 7777}))
+
+   (= false
+      (__ #{1}
+          #{2}
+          #{3}
+          #{4}))
+
+   (= true
+      (__ #{1}))
+
+   (= false
+      (__
+       #{1 -3 51 9}
+       #{0}
+       #{9 2 81 33}))
+
+   (= true
+      (__
+       #{1 3 5}
+       #{9 11 4}
+       #{-3 12 3}
+       #{-3 4 -2 10}))
+
+   (= false
+      (__
+       #{-1 -2 -3 -4 -5 -6}
+       #{1 2 3 4 5 6 7 8 9}))
+
+   (= true
+      (__
+       #{1 3 5 7}
+       #{2 4 6 8}))
+
+   (= true
+      (__
+       #{-1 3 -5 7 -9 11 -13 15}
+       #{1 -3 5 -7 9 -11 13 -15}
+       #{1 -1 2 -2 4 -4 8 -8}))
+
+   (= true
+      (__
+       #{-10 9 -8 7 -6 5 -4 3 -2 1}
+       #{10 -9 8 -7 6 -5 4 -3 2 -1}))))
+
 ;; 132. Insert between two items
 
 ;; Write a function that takes a two-argument predicate, a value, and
 ;; a collection; and returns a new collection where the value is
 ;; inserted between every two items that satisfy the predicate.
+
+(defn __
+  [p v coll]
+  (letfn [(aux[prev coll]
+            (prn prev coll)
+            (Thread/sleep 500)
+            (if (seq coll)
+              (let [hd (first coll)
+                    more (rest coll)]
+                (if (and (not (nil? prev)) (p prev hd))
+                  (cons prev (cons v (lazy-seq (aux hd more))))
+                  (if (nil? prev)
+                    (lazy-seq (aux hd more))
+                    (cons prev (lazy-seq (aux hd more))))))
+              (if (not (nil? prev))
+                (list prev))))]
+    (aux nil coll)))
+
+(__ < :less [1 6 7 4 3])
+
+(defn __
+  [p v coll]
+  (letfn [(aux [res prev coll]
+            (let [sq (seq coll)]
+              (if (nil? sq)
+                res
+                (let [hd (first sq)]
+                  (if (and (not (nil? prev)) (p prev hd))
+                    (recur (lazy-seq (conj res v hd)) hd (rest sq))
+                    (recur (lazy-seq (conj res hd)) hd (rest sq)))))))]
+    (reverse  (aux [] nil coll))))
+
+(__ < :less [1 6 7 4 3])
+
+(let [__
+      ]
+
+  (and
+   (= '(1 :less 6 :less 7 4 3) )
+   (= '(2) (__ > :more [2]))
+   (= [0 1 :x 2 :x 3 :x 4]  (__ #(and (pos? %) (< % %2)) :x (range 5)))
+   (empty? (__ > :more ()))
+   (= [0 1 :same 1 2 3 :same 5 8 13 :same 21]
+      (take 12 (->> [0 1]
+                    (iterate (fn [[a b]] [b (+' a b)]))
+                    (map first) ; fibonacci numbers
+                    (__ (fn [a b] ; both even or both odd
+                          (= (mod a 2) (mod b 2)))
+                        :same))))
+   ))
+
+
+(= [0 1 :same 1 2 3 :same 5 8 13 :same 21]
+      (take 12 (->> [0 1]
+                    (iterate (fn [[a b]] [b (+' a b)]))
+                    (map first) ; fibonacci numbers
+                    (__ (fn [a b] ; both even or both odd
+                          (= (mod a 2) (mod b 2)))
+                        :same))))
+
+(fun < :less [1 6 7 4 3] )
+
+(for [pair (rest (map vector (cons nil coll) coll))]
+  (apply p pair))
+
+
+(let [__
+      (fn [p v coll]
+
+)])
 
 ;; 134. A nil key
 

@@ -3076,75 +3076,34 @@
 ;; a collection; and returns a new collection where the value is
 ;; inserted between every two items that satisfy the predicate.
 
-(defn __
-  [p v coll]
-  (letfn [(aux[prev coll]
-            (prn prev coll)
-            (Thread/sleep 500)
-            (if (seq coll)
-              (let [hd (first coll)
-                    more (rest coll)]
-                (if (and (not (nil? prev)) (p prev hd))
-                  (cons prev (cons v (lazy-seq (aux hd more))))
-                  (if (nil? prev)
-                    (lazy-seq (aux hd more))
-                    (cons prev (lazy-seq (aux hd more))))))
-              (if (not (nil? prev))
-                (list prev))))]
-    (aux nil coll)))
+(let  [__
+       (fn [p v coll]
+         (letfn [(aux [prev coll]
+                   (lazy-seq
+                    (when-let [x (first coll)]
+                      (if (and (not (nil? prev)) (p prev x))
+                        (cons v (cons x (aux x (rest coll))))
+                        (cons x (aux x (rest coll)))))))]
 
-(__ < :less [1 6 7 4 3])
-
-(defn __
-  [p v coll]
-  (letfn [(aux [res prev coll]
-            (let [sq (seq coll)]
-              (if (nil? sq)
-                res
-                (let [hd (first sq)]
-                  (if (and (not (nil? prev)) (p prev hd))
-                    (recur (lazy-seq (conj res v hd)) hd (rest sq))
-                    (recur (lazy-seq (conj res hd)) hd (rest sq)))))))]
-    (reverse  (aux [] nil coll))))
-
-(__ < :less [1 6 7 4 3])
-
-(let [__
-      ]
+           (aux nil coll)))]
 
   (and
-   (= '(1 :less 6 :less 7 4 3) )
+
+   (= '(1 :less 6 :less 7 4 3) (__ < :less [1 6 7 4 3]))
+
    (= '(2) (__ > :more [2]))
+
    (= [0 1 :x 2 :x 3 :x 4]  (__ #(and (pos? %) (< % %2)) :x (range 5)))
+
    (empty? (__ > :more ()))
+
    (= [0 1 :same 1 2 3 :same 5 8 13 :same 21]
       (take 12 (->> [0 1]
-                    (iterate (fn [[a b]] [b (+' a b)]))
+                    (iterate (fn [[a b]] [b (+ a b)]))
                     (map first) ; fibonacci numbers
                     (__ (fn [a b] ; both even or both odd
                           (= (mod a 2) (mod b 2)))
-                        :same))))
-   ))
-
-
-(= [0 1 :same 1 2 3 :same 5 8 13 :same 21]
-      (take 12 (->> [0 1]
-                    (iterate (fn [[a b]] [b (+' a b)]))
-                    (map first) ; fibonacci numbers
-                    (__ (fn [a b] ; both even or both odd
-                          (= (mod a 2) (mod b 2)))
-                        :same))))
-
-(fun < :less [1 6 7 4 3] )
-
-(for [pair (rest (map vector (cons nil coll) coll))]
-  (apply p pair))
-
-
-(let [__
-      (fn [p v coll]
-
-)])
+                        :same))))))
 
 ;; 134. A nil key
 

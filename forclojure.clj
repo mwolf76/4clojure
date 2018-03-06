@@ -1338,7 +1338,47 @@
         (map (partial __ my-even?) (range 6)))
       [true false true false true false])))
 
-;; 80. Perfect Numbers
+;; 79. Triangle Minimal Path
+
+;; Write a function which calculates the sum of the minimal path
+;; through a triangle. The triangle is represented as a collection of
+;; vectors. The path should start at the top of the triangle and move
+;; to an adjacent number on the next row until the bottom of the
+;; triangle is reached.
+
+(let [__
+      (fn[tri]
+        (let [aux
+              (fn [x]
+                (conj
+                 (vec
+                  (for [i (range (count x))]
+                    (if (zero? i)
+                      (first x)
+                      (min (nth x i) (nth x (dec i))))))
+                 (last x)))]
+          (loop
+              [prv (first tri)
+               left (rest tri)]
+            (if-let [row (first left)]
+              (let [row' (vec (map + (aux prv) row))]
+                (recur row' (rest  left)))
+              (apply min prv)))))]
+
+  (and
+   (__ '([1]
+         [2 4]
+         [5 1 4]
+         [2 3 4 5]))
+
+   (= 20 (__ '([3]
+               [2 4]
+               [1 9 3]
+               [9 9 2 4]
+               [4 6 6 7 8]
+               [5 7 3 5 1 4])))))
+
+  ;; 80. Perfect Numbers
 
 ;; A number is "perfect" if the sum of its divisors equal the number
 ;; itself. 6 is a perfect number because 1+2+3=6. Write a function
@@ -3642,6 +3682,121 @@
    (= __ (if [0] 1 0))
    (= __ (if 0 1 0))
    (= __ (if 1 1 0))))
+
+;; 164. Language of a DFA
+
+;; A deterministic finite automaton (DFA) is an abstract machine that
+;; recognizes a regular language. Usually a DFA is defined by a
+;; 5-tuple, but instead we'll use a map with 5 keys:
+
+;; :states is the set of states for the DFA.
+;; :alphabet is the set of symbols included in the language recognized by the DFA.
+;; :start is the start state of the DFA.
+;; :accepts is the set of accept states in the DFA.
+;; :transitions is the transition function for the DFA, mapping :states ⨯ :alphabet onto :states.
+
+;; Write a function that takes as input a DFA definition (as described
+;; above) and returns a sequence enumerating all strings in the
+;; language recognized by the DFA. Note: Although the DFA itself is
+;; finite and only recognizes finite-length strings it can still
+;; recognize an infinite set of finite-length strings. And because
+;; stack space is finite, make sure you don't get stuck in an infinite
+;; loop that's not producing results every so often!
+
+(let [__
+      (fn[a]
+        (letfn
+            [(valid-transitions [q]
+               (mapcat seq
+                       (map second
+                            (filter #(= q (first %)) (seq (:transitions a))))))
+
+             (branch [prfx pairs]
+               (when-let [[fst & rst] (seq pairs)]
+                 (let [[symb target] fst]
+                   (cons
+                    [(str prfx symb) target]
+                    (branch prfx rst)))))
+
+             (produce [pairs]
+               (when-let [[[w q'] & more] (seq pairs)]
+                 (let [cont (cons (produce more) (walk-from w q'))]
+                   (if ((:accepts a) q')
+                     (cons w cont)
+                     cont))))
+
+             (walk-from[prfx q]
+               (lazy-seq
+                (produce (branch prfx (valid-transitions q)))))]
+
+          (remove nil? (flatten (walk-from "" (:start a))))))]
+
+  (and
+   (= #{"a" "ab" "abc"}
+      (set (__ '{:states #{q0 q1 q2 q3}
+                 :alphabet #{a b c}
+                 :start q0
+                 :accepts #{q1 q2 q3}
+                 :transitions {q0 {a q1}
+                               q1 {b q2}
+                               q2 {c q3}}}))))
+
+  (= #{"hi" "hey" "hello"}
+     (set (__ '{:states #{q0 q1 q2 q3 q4 q5 q6 q7}
+                :alphabet #{e h i l o y}
+                :start q0
+                :accepts #{q2 q4 q7}
+                :transitions {q0 {h q1}
+                              q1 {i q2, e q3}
+                              q3 {l q5, y q4}
+                              q5 {l q6}
+                              q6 {o q7}}})))
+
+  (= (set (let [ss "vwxyz"] (for [i ss, j ss, k ss, l ss] (str i j k l))))
+     (set (__ '{:states #{q0 q1 q2 q3 q4}
+                :alphabet #{v w x y z}
+                :start q0
+                :accepts #{q4}
+                :transitions {q0 {v q1, w q1, x q1, y q1, z q1}
+                              q1 {v q2, w q2, x q2, y q2, z q2}
+                              q2 {v q3, w q3, x q3, y q3, z q3}
+                              q3 {v q4, w q4, x q4, y q4, z q4}}})))
+
+  (let [res (take 2000
+                  (__ '{:states #{q0 q1}
+                        :alphabet #{0 1}
+                        :start q0
+                        :accepts #{q0}
+                        :transitions
+                        {q0 {0 q0, 1 q1}
+                         q1 {0 q1, 1 q0}}}))]
+
+    (and (every? (partial re-matches #"0*(?:10*10*)*") res)
+         (= res (distinct res))))
+
+  (let [res (take 2000 (__ '{:states #{q0 q1}
+                             :alphabet #{n m}
+                             :start q0
+                             :accepts #{q1}
+                             :transitions {q0 {n q0, m q1}}}))]
+    (and (every? (partial re-matches #"n*m") res)
+         (= res (distinct res))))
+
+  (let [res (take 2000 (__ '{:states #{q0 q1 q2 q3 q4 q5 q6 q7 q8 q9}
+                             :alphabet #{i l o m p t}
+                             :start q0
+                             :accepts #{q5 q8}
+                             :transitions {q0 {l q1}
+                                           q1 {i q2, o q6}
+                                           q2 {m q3}
+                                           q3 {i q4}
+                                           q4 {t q5}
+                                           q6 {o q7}
+                                           q7 {p q8}
+                                           q8 {l q9}
+                                           q9 {o q6}}}))]
+    (and (every? (partial re-matches #"limit|(?:loop)+") res)
+         (= res (distinct res)))))
 
 ;; 166. Comparisons
 

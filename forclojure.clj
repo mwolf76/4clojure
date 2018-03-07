@@ -2648,6 +2648,55 @@
                            "_ _ o _ _ _ _"
                            "_ _ f _ # _ _"]))))
 
+;; 112. Sequs Horribilis
+
+;; Create a function which takes an integer and a nested collection of
+;; integers as arguments. Analyze the elements of the input collection
+;; and return a sequence which maintains the nested structure, and
+;; which includes all elements starting from the head whose sum is
+;; less than or equal to the input integer.
+
+(let [__
+      (fn [lim root]
+        (letfn
+            [(aux [lim root]
+               (lazy-seq
+                (loop [acc 0 res [] node root]
+                  (if-let [[fst & rst] (seq node)]
+                    (if (sequential? fst)
+                      (conj res (aux (- lim acc) fst))
+                      (let [acc'(+ acc fst)]
+                        (if (and (nil? rst) (= acc' lim))
+                          (conj res fst)
+                          (if (> acc' lim)
+                            res
+                            (do
+                              (recur acc' (conj res fst) rst))))))))))]
+          (aux lim root)))]
+
+  (and
+   (=  (__ 10 [1 2 [3 [4 5] 6] 7])
+       '(1 2 (3 (4))))
+
+   (=  (__ 30 [1 2 [3 [4 [5 [6 [7 8]] 9]] 10] 11])
+       '(1 2 (3 (4 (5 (6 (7)))))))
+
+   (=  (__ 9 (range))
+       '(0 1 2 3))
+
+   (=  (__ 1 [[[[[1]]]]])
+       '(((((1))))))
+
+    (=  (__ 0 [1 2 [3 [4 5] 6] 7])
+        '())
+
+    (=  (__ 0 [0 0 [0 [0]]])
+        '(0 0 (0 (0))))
+
+    (=  (__ 1 [-10 [1 [2 3 [4 5 [6 7 [8]]]]]])
+        '(-10 (1 (2 3 (4)))))))
+
+
 ;; 114. Global take-while
 
 ;; take-while is great for filtering sequences, but it limited: you

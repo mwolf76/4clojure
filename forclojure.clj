@@ -2661,7 +2661,7 @@
         (letfn
             [(aux [lim root]
                (lazy-seq
-                (loop [acc 0 res [] node root]
+                (loop [acc 0, res [], node root]
                   (if-let [[fst & rst] (seq node)]
                     (if (sequential? fst)
                       (conj res (aux (- lim acc) fst))
@@ -2670,8 +2670,7 @@
                           (conj res fst)
                           (if (> acc' lim)
                             res
-                            (do
-                              (recur acc' (conj res fst) rst))))))))))]
+                            (recur acc' (conj res fst) rst)))))))))]
           (aux lim root)))]
 
   (and
@@ -3445,7 +3444,6 @@
    (= (take 2 (__ [3 1 2])) [[3 1 2] [3 4 3 2]])
    (= (take 100 (__ [2 4 2])) (rest (take 101 (__ [2 2]))))))
 
-
 ;; 148. The Big Divide
 
 ;; Write a function which calculates the sum of all natural numbers
@@ -3457,26 +3455,34 @@
 ;; solution will exceed the time limit.
 
 (let [__
-      (fn[n a b]
-        (let [multiple?
-              (comp zero? rem)
+      (fn [n a b]
+        (let [qa (quot (dec n) a)
+              qb (quot (dec  n) b)
+              qab (quot (dec n) (*' a b))
 
-              pred?
-              (fn[n] (or (multiple? n a)
-                         (multiple? n b)))]
+              sum
+              (fn[k]
+                (/  (*' k (inc k)) 2))]
 
-          (reduce +' (filter pred? (range n)))))]
+          (-' (+'
+               (*' a (+' (sum qa)))
+               (*' b (+' (sum qb))))
+              (*' a b (sum qab)))))]
+
   (and
-   (= 0 (__ 3 17 11))
-   (= 23 (__ 10 3 5))
-   (= 233168 (__ 1000 3 5))
-   (= "2333333316666668" (str (__ 100000000 3 5)))
-   (= "110389610389889610389610"
-      (str (__ (* 10000 10000 10000) 7 11)))
-   (= "1277732511922987429116"
-      (str (__ (* 10000 10000 10000) 757 809)))
-   (= "4530161696788274281"
-  (str (__ (* 10000 10000 1000) 1597 3571)))))
+   (= 0 (__ 3 17 11)))
+
+  (= 23 (__ 10 3 5))
+
+  (= 233168 (__ 1000 3 5))
+
+  (= "2333333316666668" (str (__ 100000000 3 5)))
+
+  (= "1277732511922987429116"
+     (str (__ (* 10000 10000 10000) 757 809)))
+
+  (= "4530161696788274281"
+     (str (__ (* 10000 10000 1000) 1597 3571))))
 
 ;; 150. Palindromic Numbers
 

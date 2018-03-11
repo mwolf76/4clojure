@@ -2978,6 +2978,71 @@
            (drop (dec 1000000))
            (take 2)))))
 
+;; 119. Win at Tic-Tac-Toe
+
+;; As in Problem 73, a tic-tac-toe board is represented by a two
+;; dimensional vector. X is represented by :x, O is represented by :o,
+;; and empty is represented by :e. Create a function that accepts a
+;; game piece and board as arguments, and returns a set (possibly
+;; empty) of all valid board placements of the game piece which would
+;; result in an immediate win.
+
+;; Board coordinates should be as in calls to get-in. For example, [0
+;; 1] is the topmost row, center position.
+
+(let [__
+      (fn [player board]
+        (let [wins
+              (fn [g]
+                (let [g (into [] (flatten g))
+                      x? #(= :x %)
+                      o? #(= :o %)
+                      all? (partial every? identity)
+                      any? (partial some identity)
+                      ws ['(0 1 2) '(3 4 5) '(6 7 8)
+                          '(0 3 6) '(1 4 7) '(2 5 8)
+                          '(0 4 8) '(2 4 6)]
+                      winner
+                      (fn [player?]
+                        (any? (map #(all? (map player? (map g %))) ws)))]
+
+                  (cond (winner x?) :x
+                        (winner o?) :o))
+                )]
+
+          (into #{}
+                (remove nil?
+                        (for [r (range 3)
+                              c (range 3)]
+                          (if (and
+                               (= :e (get-in board [r c]))
+                               (wins (assoc-in board [r c] player)))
+                            [r c]))))))]
+  (and
+   (= (__ :x [[:o :e :e]
+              [:o :x :o]
+              [:x :x :e]])
+      #{[2 2] [0 1] [0 2]}))
+
+  (= (__ :x [[:x :o :o]
+             [:x :x :e]
+             [:e :o :e]])
+     #{[2 2] [1 2] [2 0]})
+
+  (= (__ :x [[:x :e :x]
+             [:o :x :o]
+             [:e :o :e]])
+     #{[2 2] [0 1] [2 0]})
+
+  (= (__ :x [[:x :x :o]
+           [:e :e :e]
+           [:e :e :e]])
+   #{})
+
+  (= (__ :o [[:x :x :o]
+           [:o :e :o]
+           [:x :e :e]])
+   #{[2 2] [1 1]}))
 
 ;; 120. Sum of Square of digits
 
